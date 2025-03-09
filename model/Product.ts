@@ -36,7 +36,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
 Product.init(
   {
     id: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
       primaryKey: true,
     },

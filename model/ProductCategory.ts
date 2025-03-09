@@ -1,4 +1,3 @@
-// filepath: /Users/duy/nextjs project/web-qua-tang/models/ProductCategory.ts
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
 
@@ -19,7 +18,7 @@ class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCr
 ProductCategory.init(
   {
     id: {
-      type: DataTypes.UUID,
+      type: DataTypes.INTEGER.UNSIGNED,
       autoIncrement: true,
       primaryKey: true,
     },

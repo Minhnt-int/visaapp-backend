@@ -18,6 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return res.status(400).json({ message: 'Category not found' });
       }
 
+      // // Kiểm tra xem slug có tồn tại không
+      // const existingProduct = await Product.findOne({ where: { slug } });
+      // if (existingProduct) {
+      //   return res.status(400).json({ message: 'Slug already exists' });
+      // }
+
       // Thiết lập múi giờ cho createdAt và updatedAt
       const createdAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
       const updatedAt = createdAt;
@@ -50,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         await Promise.all(mediaPromises);
       }
 
-      res.status(201).json({ message: 'Product created successfully!', data: newProduct, id: newProduct.id });
+      res.status(201).json({ message: 'Product created successfully!', data: {...newProduct , id: newProduct.id}});
     } catch (error) {
       console.error('Error creating product:', error);
       res.status(500).json({ message: 'Error creating product', error: (error as any).message });
