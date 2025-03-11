@@ -4,6 +4,7 @@ import ProductCategory from '../../../model/ProductCategory';
 import Product from '../../../model/Product';
 import ProductMedia from '../../../model/ProductMedia';
 import moment from 'moment-timezone';
+import { UniqueConstraintError } from 'sequelize';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
@@ -17,12 +18,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (!category) {
         return res.status(400).json({ message: 'Category not found' });
       }
-
-      // // Kiểm tra xem slug có tồn tại không
-      // const existingProduct = await Product.findOne({ where: { slug } });
-      // if (existingProduct) {
-      //   return res.status(400).json({ message: 'Slug already exists' });
-      // }
 
       // Thiết lập múi giờ cho createdAt và updatedAt
       const createdAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
@@ -59,6 +54,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(201).json({ message: 'Product created successfully!', data: {...newProduct , id: newProduct.id}});
     } catch (error) {
       console.error('Error creating product:', error);
+      if (error instanceof UniqueConstraintError) {
+        const uniqueErrors = (error as UniqueConstraintError).errors.map((err: any) => ({
+          field: err.path,
+          message: `${err.path} already exists`
+        }));
+        return res.status(400).json({ message: 'Validation error', errors: uniqueErrors });
+      }
       res.status(500).json({ message: 'Error creating product', error: (error as any).message });
     }
   } else {
