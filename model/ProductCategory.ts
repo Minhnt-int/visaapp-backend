@@ -38,6 +38,14 @@ ProductCategory.init(
   {
     tableName: 'product_categories',
     sequelize, // passing the `sequelize` instance is required
+    indexes: [
+      {
+        fields: ['name'], // Add index for the 'name' column
+      },
+      {
+        fields: ['parentId'], // Add index for the 'parentId' column
+      },
+    ],
   }
 );
 

@@ -88,6 +88,14 @@ Product.init(
     tableName: 'products',
     sequelize, // passing the `sequelize` instance is required
     timestamps: true, // automatically add createdAt and updatedAt fields
+    indexes: [
+      {
+        fields: ['name'], // Add index for the 'name' column
+      },
+      {
+        fields: ['categoryId'], // Add index for the 'categoryId' column
+      },
+    ],
   }
 );
 

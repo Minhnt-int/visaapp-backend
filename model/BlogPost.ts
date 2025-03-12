@@ -97,6 +97,17 @@ BlogPost.init(
     tableName: 'blog_posts',
     sequelize, // passing the `sequelize` instance is required
     timestamps: true, // automatically add createdAt and updatedAt fields
+    indexes: [
+      {
+        fields: ['slug'], // Add index for the 'slug' column
+      },
+      {
+        fields: ['title'], // Add index for the 'title' column
+      },
+      {
+        fields: ['blogCategoryId'], // Add index for the 'blogCategoryId' column
+      },
+    ],
   }
 );
 

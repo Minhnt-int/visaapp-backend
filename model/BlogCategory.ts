@@ -43,6 +43,11 @@ BlogCategory.init(
     tableName: 'blog_categories',
     sequelize, // passing the `sequelize` instance is required
     timestamps: true, // automatically add createdAt and updatedAt fields
+    indexes: [
+      {
+        fields: ['name'], // Add index for the 'name' column
+      },
+    ],
   }
 );
 
