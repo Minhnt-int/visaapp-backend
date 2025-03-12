@@ -1,44 +1,48 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import Product from '../../../model/Product';
+import ProductCategory from '../../../model/ProductCategory';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
 
   if (req.method === 'GET') {
     try {
-      // Lấy các tham số truy vấn từ URL
-      const { page = 1, limit = 10 } = req.query;
+      const { name, category, page = 1, limit = 10, minPrice, maxPrice } = req.query;
 
-      // Chuyển đổi các tham số truy vấn thành số nguyên
-      const pageNumber = parseInt(page as string, 10);
-      const limitNumber = parseInt(limit as string, 10);
+      // Tạo điều kiện tìm kiếm
+      const searchConditions: any = {};
+      if (name) {
+        searchConditions.name = { $like: `%${name}%` }; // Tìm kiếm theo tên
+      }
+      if (category) {
+        searchConditions['$category.name$'] = { $like: `%${category}%` }; // Tìm kiếm theo tên danh mục
+      }
+      if (minPrice) {
+        searchConditions.price = { ...searchConditions.price, $gte: parseFloat(minPrice as string) }; // Tìm kiếm theo giá tối thiểu
+      }
+      if (maxPrice) {
+        searchConditions.price = { ...searchConditions.price, $lte: parseFloat(maxPrice as string) }; // Tìm kiếm theo giá tối đa
+      }
 
-      // Tính toán bù trừ (offset)
-      const offset = (pageNumber - 1) * limitNumber;
+      // Tính toán offset cho phân trang
+      const offset = (parseInt(page as string) - 1) * parseInt(limit as string);
 
-      // Truy vấn cơ sở dữ liệu với giới hạn và bù trừ
+      // Tìm kiếm sản phẩm
       const products = await Product.findAll({
-        limit: limitNumber,
+        where: searchConditions,
+        include: [{
+          model: ProductCategory,
+          as: 'category',
+        }],
+        limit: parseInt(limit as string),
         offset: offset,
       });
 
-      // Truy vấn tổng số sản phẩm để tính tổng số trang
-      const totalProducts = await Product.count();
-      const totalPages = Math.ceil(totalProducts / limitNumber);
-
-      res.status(200).json({
-        data: products,
-        meta: {
-          totalProducts,
-          totalPages,
-          currentPage: pageNumber,
-          pageSize: limitNumber,
-        },
-      });
+      res.status(200).json({ data: products });
     } catch (error) {
-      console.error('Error fetching products:', error);
-      res.status(500).json({ message: 'Error fetching products', error: (error as any).message });
+      console.error('Error searching products:', error);
+      res.status(500).json({ message: 'Error searching products', error: (error as any).message });
     }
   } else {
     res.setHeader('Allow', ['GET']);

@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
-import Product from './Product';
 
 interface ProductMediaAttributes {
   id: number;
@@ -59,16 +58,5 @@ ProductMedia.init(
   }
 );
 
-// // Thiết lập quan hệ
-// ProductMedia.belongsTo(Product, {
-//   foreignKey: 'productId',
-//   as: 'product',
-// });
-
-// Product.hasMany(ProductMedia, {
-//   sourceKey: 'id',
-//   foreignKey: 'productId',
-//   as: 'media',
-// });
 
 export default ProductMedia;

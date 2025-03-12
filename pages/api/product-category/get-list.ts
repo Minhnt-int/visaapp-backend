@@ -7,13 +7,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'GET') {
     try {
-      const { page = 1, limit = 10 } = req.query;
+      const { page = 1, limit = 10, name } = req.query;
       const pageNumber = parseInt(page as string, 10);
       const limitNumber = parseInt(limit as string, 10);
 
       const offset = (pageNumber - 1) * limitNumber;
 
+      const searchConditions: any = {};
+      if (name) {
+        searchConditions.name = { $like: `%${name}%` }; // Tìm kiếm theo tên
+      }
+
       const { count, rows } = await ProductCategory.findAndCountAll({
+        where: searchConditions,
         offset,
         limit: limitNumber,
       });
