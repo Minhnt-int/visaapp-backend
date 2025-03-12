@@ -4,10 +4,17 @@ import React, { useState } from 'react';
 
 export default function ImageUploadForm() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [preview, setPreview] = useState<string | null>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files.length > 0) {
-      setSelectedFile(event.target.files[0]);
+      const file = event.target.files[0];
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -38,6 +45,12 @@ export default function ImageUploadForm() {
     <form onSubmit={handleSubmit}>
       <input type="file" onChange={handleFileChange} />
       <button type="submit">Upload</button>
+      {preview && (
+        <div>
+          <h2>Selected Image:</h2>
+          <img src={preview} alt="Selected" style={{ width: '300px', height: 'auto' }} />
+        </div>
+      )}
     </form>
   );
 }
