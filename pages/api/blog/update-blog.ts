@@ -3,47 +3,174 @@ import { connectToDatabase } from '../../../lib/db';
 import BlogPost from '../../../model/BlogPost';
 import BlogCategory from '../../../model/BlogCategory';
 import moment from 'moment-timezone';
+import logger from '../../../lib/logger';
+import { asyncHandler, AppError } from '../../../lib/error-handler';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const requestId = req.headers['x-request-id'] || Date.now().toString();
+  logger.info('Processing blog update request', {
+    requestId,
+    method: req.method,
+    url: req.url,
+    userAgent: req.headers['user-agent']
+  });
+
+  if (req.method !== 'PUT') {
+    logger.warn('Invalid method for blog update', {
+      requestId,
+      method: req.method
+    });
+    res.setHeader('Allow', ['PUT']);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
+  }
+
   await connectToDatabase();
+  const startTime = Date.now();
 
-  if (req.method === 'PUT') {
-    try {
-      const { id, title, content, slug, metaTitle, metaDescription, metaKeywords, author, publishedAt, blogCategoryId } = req.body;
+  try {
+    const { 
+      id, title, content, slug, metaTitle, metaDescription, 
+      metaKeywords, author, publishedAt, blogCategoryId 
+    } = req.body;
 
-      // Tìm bài viết theo ID
-      const blogPost = await BlogPost.findByPk(id);
-      if (!blogPost) {
-        return res.status(404).json({ message: 'Blog post not found' });
-      }
+    // Log input validation
+    logger.debug('Validating blog update input', {
+      requestId,
+      blogId: id,
+      hasTitle: !!title,
+      hasContent: !!content,
+      hasSlug: !!slug,
+      categoryId: blogCategoryId
+    });
 
-      // Kiểm tra xem danh mục blog có tồn tại không
+    if (!id) {
+      logger.warn('Missing blog ID for update', { requestId });
+      throw new AppError(400, 'Blog ID is required', 'VALIDATION_ERROR');
+    }
+
+    // Find blog post
+    logger.debug('Finding blog post for update', {
+      requestId,
+      blogId: id
+    });
+
+    const blogPost = await BlogPost.findByPk(id);
+    if (!blogPost) {
+      logger.warn('Blog post not found', {
+        requestId,
+        blogId: id
+      });
+      throw new AppError(404, 'Blog post not found', 'NOT_FOUND_ERROR');
+    }
+
+    // Check category if provided
+    if (blogCategoryId) {
+      logger.debug('Checking blog category existence', {
+        requestId,
+        categoryId: blogCategoryId
+      });
+
       const category = await BlogCategory.findByPk(blogCategoryId);
       if (!category) {
-        return res.status(400).json({ message: 'Blog category not found' });
+        logger.warn('Blog category not found', {
+          requestId,
+          categoryId: blogCategoryId
+        });
+        throw new AppError(400, 'Blog category not found', 'CATEGORY_NOT_FOUND');
       }
-
-      // Cập nhật thông tin bài viết
-      blogPost.title = title || blogPost.title;
-      blogPost.content = content || blogPost.content;
-      blogPost.slug = slug || blogPost.slug;
-      blogPost.metaTitle = metaTitle || blogPost.metaTitle;
-      blogPost.metaDescription = metaDescription || blogPost.metaDescription;
-      blogPost.metaKeywords = metaKeywords || blogPost.metaKeywords;
-      blogPost.author = author || blogPost.author;
-      blogPost.blogCategoryId = blogCategoryId || blogPost.blogCategoryId;
-      blogPost.publishedAt = publishedAt ? moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate() : blogPost.publishedAt;
-      blogPost.updatedAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
-
-      await blogPost.save();
-
-      res.status(200).json({ message: 'Blog post updated successfully!', data: {...blogPost.toJSON(), id: blogPost.id} });
-    } catch (error) {
-      console.error('Error updating blog post:', error);
-      res.status(500).json({ message: 'Error updating blog post', error: (error as any).message });
     }
-  } else {
-    res.setHeader('Allow', ['PUT']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    // Check slug uniqueness if changed
+    if (slug && slug !== blogPost.slug) {
+      logger.debug('Checking slug uniqueness', {
+        requestId,
+        oldSlug: blogPost.slug,
+        newSlug: slug
+      });
+
+      const existingPost = await BlogPost.findOne({ where: { slug } });
+      if (existingPost && existingPost.id !== blogPost.id) {
+        logger.warn('Duplicate slug found', {
+          requestId,
+          slug
+        });
+        throw new AppError(400, 'Slug already exists', 'DUPLICATE_SLUG');
+      }
+    }
+
+    // Track changes for logging
+    const changes: Record<string, { old: any; new: any }> = {};
+
+    // Update blog post fields with type-safe assignments
+    if (title !== undefined) {
+      changes.title = { old: blogPost.title, new: title };
+      blogPost.title = title;
+    }
+    if (content !== undefined) {
+      changes.content = { old: blogPost.content, new: content };
+      blogPost.content = content;
+    }
+    if (slug !== undefined) {
+      changes.slug = { old: blogPost.slug, new: slug };
+      blogPost.slug = slug;
+    }
+    if (metaTitle !== undefined) {
+      changes.metaTitle = { old: blogPost.metaTitle, new: metaTitle };
+      blogPost.metaTitle = metaTitle;
+    }
+    if (metaDescription !== undefined) {
+      changes.metaDescription = { old: blogPost.metaDescription, new: metaDescription };
+      blogPost.metaDescription = metaDescription;
+    }
+    if (metaKeywords !== undefined) {
+      changes.metaKeywords = { old: blogPost.metaKeywords, new: metaKeywords };
+      blogPost.metaKeywords = metaKeywords;
+    }
+    if (author !== undefined) {
+      changes.author = { old: blogPost.author, new: author };
+      blogPost.author = author;
+    }
+    if (blogCategoryId !== undefined) {
+      changes.blogCategoryId = { old: blogPost.blogCategoryId, new: blogCategoryId };
+      blogPost.blogCategoryId = blogCategoryId;
+    }
+    if (publishedAt !== undefined) {
+      const newPublishedAt = moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate();
+      changes.publishedAt = { old: blogPost.publishedAt, new: newPublishedAt };
+      blogPost.publishedAt = newPublishedAt;
+    }
+
+    blogPost.updatedAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
+
+    logger.debug('Updating blog post', {
+      requestId,
+      blogId: id,
+      changes
+    });
+
+    await blogPost.save();
+
+    logger.info('Blog post updated successfully', {
+      requestId,
+      blogId: blogPost.id,
+      title: blogPost.title,
+      categoryId: blogPost.blogCategoryId,
+      changedFields: Object.keys(changes),
+      processingTime: Date.now() - startTime
+    });
+
+    res.status(200).json({ 
+      message: 'Blog post updated successfully!', 
+      data: {...blogPost.toJSON(), id: blogPost.id} 
+    });
+
+  } catch (error) {
+    logger.error('Error updating blog post', {
+      requestId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      processingTime: Date.now() - startTime
+    });
+    throw error;
   }
-}
+});

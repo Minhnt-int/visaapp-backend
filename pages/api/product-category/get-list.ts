@@ -1,45 +1,128 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import ProductCategory from '../../../model/ProductCategory';
+import { Op } from 'sequelize';
+import logger from '../../../lib/logger';
+import { asyncHandler, AppError } from '../../../lib/error-handler';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  await connectToDatabase();
+export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const requestId = req.headers['x-request-id'] || Date.now().toString();
+  logger.info('Processing category list request', {
+    requestId,
+    method: req.method,
+    url: req.url,
+    query: req.query
+  });
 
-  if (req.method === 'GET') {
-    try {
-      const { page = 1, limit = 10, name } = req.query;
-      const pageNumber = parseInt(page as string, 10);
-      const limitNumber = parseInt(limit as string, 10);
-
-      const offset = (pageNumber - 1) * limitNumber;
-
-      const searchConditions: any = {};
-      if (name) {
-        searchConditions.name = { $like: `%${name}%` }; // Tìm kiếm theo tên
-      }
-
-      const { count, rows } = await ProductCategory.findAndCountAll({
-        where: searchConditions,
-        offset,
-        limit: limitNumber,
-      });
-
-      res.status(200).json({
-        message: 'Categories fetched successfully!',
-        data: rows,
-        pagination: {
-          total: count,
-          page: pageNumber,
-          limit: limitNumber,
-          totalPages: Math.ceil(count / limitNumber),
-        },
-      });
-    } catch (error) {
-      console.error('Error fetching categories:', error);
-      res.status(500).json({ message: 'Error fetching categories', error: (error as any).message });
-    }
-  } else {
+  if (req.method !== 'GET') {
+    logger.warn('Invalid method for category listing', {
+      requestId,
+      method: req.method
+    });
     res.setHeader('Allow', ['GET']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-}
+
+  await connectToDatabase();
+  const startTime = Date.now();
+
+  try {
+    const { page = '1', limit = '10', name, parentId, sortBy = 'createdAt', sortOrder = 'DESC' } = req.query;
+
+    // Log query parameters
+    logger.debug('Processing category list parameters', {
+      requestId,
+      page,
+      limit,
+      name,
+      parentId,
+      sortBy,
+      sortOrder
+    });
+
+    // Validate pagination parameters
+    const pageNumber = parseInt(page as string, 10);
+    const limitNumber = parseInt(limit as string, 10);
+
+    if (isNaN(pageNumber) || isNaN(limitNumber) || pageNumber < 1 || limitNumber < 1) {
+      logger.warn('Invalid pagination parameters', {
+        requestId,
+        page,
+        limit
+      });
+      throw new AppError(400, 'Invalid pagination parameters', 'VALIDATION_ERROR');
+    }
+
+    const offset = (pageNumber - 1) * limitNumber;
+
+    // Build search conditions
+    const where: any = {};
+    
+    if (name) {
+      where.name = {
+        [Op.like]: `%${name}%`
+      };
+      logger.debug('Added name search condition', {
+        requestId,
+        searchTerm: name
+      });
+    }
+
+    if (parentId) {
+      where.parentId = parentId;
+      logger.debug('Added parent filter', {
+        requestId,
+        parentId
+      });
+    }
+
+    // Execute query with logging
+    logger.debug('Executing category search', {
+      requestId,
+      where,
+      offset,
+      limit: limitNumber,
+      sortBy,
+      sortOrder
+    });
+
+    const { count, rows } = await ProductCategory.findAndCountAll({
+      where,
+      offset,
+      limit: limitNumber,
+      order: [[sortBy as string, sortOrder as string]]
+    });
+
+    const totalPages = Math.ceil(count / limitNumber);
+
+    logger.info('Categories retrieved successfully', {
+      requestId,
+      totalCategories: count,
+      returnedCategories: rows.length,
+      page: pageNumber,
+      totalPages,
+      processingTime: Date.now() - startTime
+    });
+
+    res.status(200).json({
+      message: 'Categories fetched successfully!',
+      data: rows,
+      pagination: {
+        total: count,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages,
+        hasMore: pageNumber < totalPages
+      }
+    });
+
+  } catch (error) {
+    logger.error('Error fetching categories', {
+      requestId,
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+      processingTime: Date.now() - startTime
+    });
+    throw error;
+  }
+});

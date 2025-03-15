@@ -1,5 +1,6 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
+import logger from '../lib/logger';
 
 interface ProductCategoryAttributes {
   id: number;
@@ -13,6 +14,25 @@ class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCr
   public id!: number;
   public name!: string;
   public parentId?: number | null;
+
+  // Add logging hooks
+  static async findByPkWithLogging(id: number) {
+    logger.debug('Finding product category by ID', { id });
+    const category = await this.findByPk(id);
+    if (category) {
+      logger.debug('Product category found', { id, name: category.name });
+    } else {
+      logger.debug('Product category not found', { id });
+    }
+    return category;
+  }
+
+  static async findAllWithLogging(options?: any) {
+    logger.debug('Finding all product categories', { options });
+    const categories = await this.findAll(options);
+    logger.debug('Product categories found', { count: categories.length });
+    return categories;
+  }
 }
 
 ProductCategory.init(
@@ -37,27 +57,85 @@ ProductCategory.init(
   },
   {
     tableName: 'product_categories',
-    sequelize, // passing the `sequelize` instance is required
+    sequelize,
     indexes: [
       {
-        fields: ['name'], // Add index for the 'name' column
+        fields: ['name'],
       },
       {
-        fields: ['parentId'], // Add index for the 'parentId' column
+        fields: ['parentId'],
       },
     ],
+    hooks: {
+      beforeCreate: (category: ProductCategory) => {
+        logger.debug('Creating new product category', {
+          name: category.name,
+          parentId: category.parentId
+        });
+      },
+      afterCreate: (category: ProductCategory) => {
+        logger.info('Product category created', {
+          id: category.id,
+          name: category.name,
+          parentId: category.parentId
+        });
+      },
+      beforeUpdate: (category: ProductCategory) => {
+        logger.debug('Updating product category', {
+          id: category.id,
+          name: category.name,
+          parentId: category.parentId
+        });
+      },
+      afterUpdate: (category: ProductCategory) => {
+        logger.info('Product category updated', {
+          id: category.id,
+          name: category.name,
+          parentId: category.parentId
+        });
+      },
+      beforeDestroy: (category: ProductCategory) => {
+        logger.warn('Deleting product category', {
+          id: category.id,
+          name: category.name
+        });
+      },
+      afterDestroy: (category: ProductCategory) => {
+        logger.info('Product category deleted', {
+          id: category.id,
+          name: category.name
+        });
+      }
+    }
   }
 );
 
-// Thiết lập quan hệ tự tham chiếu
+// Self-referential relationships
 ProductCategory.hasMany(ProductCategory, {
   foreignKey: 'parentId',
   as: 'subcategories',
+  hooks: true,
+  onDelete: 'CASCADE',
 });
 
 ProductCategory.belongsTo(ProductCategory, {
   foreignKey: 'parentId',
   as: 'parent',
+});
+
+// Add logging for relationship operations
+ProductCategory.afterFind((instancesOrInstance: ProductCategory | readonly ProductCategory[] | null) => {
+  if (Array.isArray(instancesOrInstance)) {
+    logger.debug('Retrieved multiple categories', {
+      count: instancesOrInstance.length,
+      ids: instancesOrInstance.map(c => c.id)
+    });
+  } else if (instancesOrInstance instanceof ProductCategory) {
+    logger.debug('Retrieved single category', {
+      id: instancesOrInstance.id,
+      name: instancesOrInstance.name
+    });
+  }
 });
 
 export default ProductCategory;
