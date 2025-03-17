@@ -24,10 +24,10 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const { 
-    page = '1', 
-    limit = '10', 
-    category, 
+  const {
+    page = '1',
+    limit = '10',
+    category,
     search,
     minPrice,
     maxPrice,
@@ -63,7 +63,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
   // Build query conditions
   const where: any = {};
-  
+
   if (search) {
     where.name = {
       [Op.like]: `%${search}%`
@@ -107,8 +107,19 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         },
         {
           model: ProductMedia,
-          as: 'media'
+          as: 'media',
+          limit: 2,
+          where: {
+            type: 'image' // Thêm điều kiện type là image
+          }
         }
+      ],
+      attributes: [
+        'id',
+        'name',
+        'description',
+        'price',
+        'quantity'
       ],
       order: [[sortBy as string, sortOrder as string]],
       limit: itemsPerPage,

@@ -1,4 +1,5 @@
 // filepath: /Users/duy/nextjs project/web-qua-tang/lib/db.ts
+
 import { Sequelize } from 'sequelize';
 import logger from './logger';
 
@@ -27,7 +28,6 @@ export const connectToDatabase = async () => {
     logger.info('Synchronizing database models...');
     await sequelize.sync({ alter: true });
     logger.info('Database models synchronized successfully');
-
   } catch (error) {
     logger.error('Database connection error', {
       error: error instanceof Error ? error.message : String(error),
@@ -52,6 +52,23 @@ sequelize.addHook('beforeDisconnect', () => {
 
 sequelize.addHook('afterDisconnect', () => {
   logger.debug('Database connection closed');
+});
+
+// Additional hooks for model operations
+sequelize.addHook('beforeCreate', (model, options) => {
+  logger.debug('Tạo mới trước:', model);
+});
+
+sequelize.addHook('afterCreate', (model, options) => {
+  logger.debug('Kết quả tạo mới sau:', model);
+});
+
+sequelize.addHook('beforeUpdate', (model, options) => {
+  logger.debug('Cập nhật trước:', model);
+});
+
+sequelize.addHook('afterUpdate', (model, options) => {
+  logger.debug('Kết quả cập nhật sau:', model);
 });
 
 export default sequelize;
