@@ -7,6 +7,6 @@ module.exports = {
     externalResolver: true,
   },
   serverRuntimeConfig: {
-    port: 3000, // Thay đổi cổng tại đây
+    port: 3002, // Thay đổi cổng tại đây
   },
 };

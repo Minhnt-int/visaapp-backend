@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import logger from './logger';
+import cors, { runMiddleware } from './cors'; // Import middleware CORS
 
 export class AppError extends Error {
   constructor(
@@ -98,6 +99,14 @@ export const asyncHandler = (
 ) => {
   return async (req: NextApiRequest, res: NextApiResponse) => {
     try {
+      // Chạy middleware CORS trước khi xử lý logic chính
+      await runMiddleware(req, res, cors);
+
+      // Xử lý yêu cầu preflight (OPTIONS)
+      if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+      }
+
       // Log the start of request processing
       logger.debug('Processing request', {
         method: req.method,
