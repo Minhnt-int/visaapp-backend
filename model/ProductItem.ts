@@ -1,6 +1,5 @@
 import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
-import Product from './Product';
 
 interface ProductItemAttributes {
   id: number;
@@ -71,10 +70,4 @@ ProductItem.init(
   }
 );
 
-// Thiết lập mối quan hệ với Product
-ProductItem.belongsTo(Product, {
-  foreignKey: 'productId',
-  as: 'product',
-});
-
-export default ProductItem; 
+export default ProductItem;

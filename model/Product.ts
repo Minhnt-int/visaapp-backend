@@ -2,7 +2,6 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
 import ProductCategory from './ProductCategory';
 import ProductMedia from './ProductMedia';
-import ProductItem from './ProductItem';
 
 interface ProductAttributes {
   id: number;
@@ -110,13 +109,6 @@ Product.hasMany(ProductMedia, {
   sourceKey: 'id',
   foreignKey: 'productId',
   as: 'media',
-});
-
-// Thêm quan hệ với ProductItem
-Product.hasMany(ProductItem, {
-  sourceKey: 'id',
-  foreignKey: 'productId',
-  as: 'items',
 });
 
 export default Product;
