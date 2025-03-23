@@ -2,11 +2,11 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
 import ProductCategory from './ProductCategory';
 import ProductMedia from './ProductMedia';
+import ProductItem from './ProductItem';
 
 interface ProductAttributes {
   id: number;
   name: string;
-  price: number;
   description: string;
   categoryId: number;
   slug: string;
@@ -22,7 +22,6 @@ interface ProductCreationAttributes extends Optional<ProductAttributes, 'id'> {}
 class Product extends Model<ProductAttributes, ProductCreationAttributes> implements ProductAttributes {
   public id!: number;
   public name!: string;
-  public price!: number;
   public description!: string;
   public categoryId!: number;
   public slug!: string;
@@ -42,10 +41,6 @@ Product.init(
     },
     name: {
       type: new DataTypes.STRING(128),
-      allowNull: false,
-    },
-    price: {
-      type: DataTypes.FLOAT,
       allowNull: false,
     },
     description: {
@@ -115,6 +110,13 @@ Product.hasMany(ProductMedia, {
   sourceKey: 'id',
   foreignKey: 'productId',
   as: 'media',
+});
+
+// Thêm quan hệ với ProductItem
+Product.hasMany(ProductItem, {
+  sourceKey: 'id',
+  foreignKey: 'productId',
+  as: 'items',
 });
 
 export default Product;

@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import Product from '../../../model/Product';
 import ProductMedia from '../../../model/ProductMedia';
+import ProductItem from '../../../model/ProductItem';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
@@ -10,13 +11,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { slug } = req.query;
 
-      // Tìm sản phẩm theo slug và bao gồm thông tin media
+      // Tìm sản phẩm theo slug và bao gồm thông tin media và items (màu sắc và giá)
       const product = await Product.findOne({
         where: { slug },
-        include: [{
-          model: ProductMedia,
-          as: 'media'
-        }]
+        include: [
+          {
+            model: ProductMedia,
+            as: 'media'
+          },
+          {
+            model: ProductItem,
+            as: 'items',
+            attributes: ['id', 'color', 'price'] // Chỉ lấy các thuộc tính cần thiết
+          }
+        ]
       });
 
       if (!product) {
