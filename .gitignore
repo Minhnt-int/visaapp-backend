@@ -2,3 +2,6 @@ node_modules
 .DS_Store
 .env
 .next/
+logs/.4176896c53a7ccb8f0e545b5a60068da0a808d2f-audit.json
+*.json
+*.log

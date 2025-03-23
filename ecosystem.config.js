@@ -7,7 +7,7 @@ module.exports = {
         args: 'start',
         env: {
         //   NODE_ENV: 'production',
-          PORT: 3002 // Bạn có thể thay đổi cổng nếu cần
+          PORT: 1194 // Bạn có thể thay đổi cổng nếu cần
         }
       }
     ]
