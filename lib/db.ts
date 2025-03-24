@@ -1,7 +1,7 @@
 // filepath: /Users/duy/nextjs project/web-qua-tang/lib/db.ts
 import { Sequelize } from 'sequelize';
 
-const host = process.env.DB_HOST || 'localhost'
+const host = "192.168.55.254"
 const port = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306;
 
 const sequelize = new Sequelize('duy', 'root', 'admin', {

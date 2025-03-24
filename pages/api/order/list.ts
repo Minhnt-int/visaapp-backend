@@ -1,0 +1,76 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { connectToDatabase } from '../../../lib/db';
+import Order from '../../../model/Order';
+import { asyncHandler, AppError } from '../../../lib/error-handler';
+
+const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'GET') {
+    throw new AppError(405, `Method ${req.method} Not Allowed`, 'METHOD_NOT_ALLOWED');
+  }
+
+  await connectToDatabase();
+
+  const { 
+    userId, 
+    status, 
+    page = 1, 
+    limit = 10, 
+    startDate, 
+    endDate 
+  } = req.query;
+
+  const pageNumber = parseInt(page as string, 10);
+  const limitNumber = parseInt(limit as string, 10);
+  const offset = (pageNumber - 1) * limitNumber;
+
+  // Xây dựng điều kiện tìm kiếm
+  const whereConditions: any = {};
+
+  if (userId) {
+    whereConditions.userId = userId;
+  }
+
+  if (status) {
+    whereConditions.status = status;
+  }
+
+  // Nếu có ngày bắt đầu và kết thúc, tìm các đơn hàng trong khoảng thời gian
+  if (startDate && endDate) {
+    whereConditions.createdAt = {
+      $between: [new Date(startDate as string), new Date(endDate as string)]
+    };
+  } else if (startDate) {
+    whereConditions.createdAt = {
+      $gte: new Date(startDate as string)
+    };
+  } else if (endDate) {
+    whereConditions.createdAt = {
+      $lte: new Date(endDate as string)
+    };
+  }
+
+  try {
+    // Tìm đơn hàng và đếm tổng số
+    const { count, rows } = await Order.findAndCountAll({
+      where: whereConditions,
+      limit: limitNumber,
+      offset,
+      order: [['createdAt', 'DESC']],
+    });
+
+    res.status(200).json({
+      message: 'Orders fetched successfully',
+      data: rows,
+      pagination: {
+        total: count,
+        page: pageNumber,
+        limit: limitNumber,
+        totalPages: Math.ceil(count / limitNumber),
+      },
+    });
+  } catch (error) {
+    throw error;
+  }
+});
+
+export default handler; 

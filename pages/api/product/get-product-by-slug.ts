@@ -11,7 +11,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { slug } = req.query;
 
-      // Tìm sản phẩm theo slug và bao gồm thông tin media và items (màu sắc và giá)
+      // Tìm sản phẩm theo slug và bao gồm thông tin media và items (tên, màu sắc, giá và trạng thái)
       const product = await Product.findOne({
         where: { slug },
         include: [
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             model: ProductItem,
             as: 'items',
-            attributes: ['id', 'color', 'price'] // Chỉ lấy các thuộc tính cần thiết
+            attributes: ['id', 'name', 'color', 'price', 'status'] // Thêm trường status
           }
         ]
       });

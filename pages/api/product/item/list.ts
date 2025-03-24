@@ -1,0 +1,44 @@
+import { NextApiRequest, NextApiResponse } from 'next';
+import { connectToDatabase } from '../../../../lib/db';
+import ProductItem, { ProductItemStatus } from '../../../../model/ProductItem';
+import { asyncHandler, AppError } from '../../../../lib/error-handler';
+
+const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
+  if (req.method !== 'GET') {
+    throw new AppError(405, `Method ${req.method} Not Allowed`, 'METHOD_NOT_ALLOWED');
+  }
+
+  await connectToDatabase();
+
+  const { productId, status } = req.query;
+
+  // Kiểm tra ID sản phẩm
+  if (!productId) {
+    throw new AppError(400, 'Missing product ID', 'VALIDATION_ERROR');
+  }
+
+  // Xây dựng điều kiện truy vấn
+  const whereCondition: any = { productId };
+
+  // Nếu có trạng thái, thêm vào điều kiện
+  if (status && Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+    whereCondition.status = status;
+  }
+
+  try {
+    // Lấy danh sách ProductItem
+    const productItems = await ProductItem.findAll({
+      where: whereCondition,
+      order: [['name', 'ASC']]
+    });
+
+    res.status(200).json({
+      message: 'Product items fetched successfully',
+      data: productItems,
+    });
+  } catch (error) {
+    throw error;
+  }
+});
+
+export default handler; 
