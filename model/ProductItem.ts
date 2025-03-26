@@ -14,6 +14,7 @@ interface ProductItemAttributes {
   name: string;
   color: string;
   price: number;
+  originalPrice: number; // Giá gốc, dùng khi sản phẩm được giảm giá
   status: ProductItemStatus;
   createdAt?: Date;
   updatedAt?: Date;
@@ -27,6 +28,7 @@ class ProductItem extends Model<ProductItemAttributes, ProductItemCreationAttrib
   public name!: string;
   public color!: string;
   public price!: number;
+  public originalPrice!: number;
   public status!: ProductItemStatus;
   public createdAt!: Date;
   public updatedAt!: Date;
@@ -58,6 +60,11 @@ ProductItem.init(
     price: {
       type: DataTypes.FLOAT,
       allowNull: false,
+    },
+    originalPrice: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
     },
     status: {
       type: DataTypes.ENUM(...Object.values(ProductItemStatus)),

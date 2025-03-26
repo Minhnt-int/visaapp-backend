@@ -10,7 +10,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
 
   await connectToDatabase();
 
-  const { id, name, color, price, status } = req.body;
+  const { id, name, color, price, originalPrice, status } = req.body;
 
   // Kiểm tra ID
   if (!id) {
@@ -40,7 +40,17 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   }
   
   if (price !== undefined) {
+    if (price < 0) {
+      throw new AppError(400, 'Price must be a positive number', 'VALIDATION_ERROR');
+    }
     updateData.price = price;
+  }
+  
+  if (originalPrice !== undefined) {
+    if (originalPrice < 0) {
+      throw new AppError(400, 'Original price must be a positive number', 'VALIDATION_ERROR');
+    }
+    updateData.originalPrice = originalPrice;
   }
   
   if (status !== undefined) {

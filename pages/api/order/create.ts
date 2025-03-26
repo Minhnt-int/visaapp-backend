@@ -75,6 +75,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         productItemId: productItem.id,
         quantity: quantity || 1,
         price: productItem.price,
+        originalPrice: productItem.originalPrice,
         color: productItem.color,
         productName: product.name,
         itemName: productItem.name,

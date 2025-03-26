@@ -109,6 +109,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         name: string; 
         color: string; 
         price: number;
+        originalPrice?: number;
         status?: ProductItemStatus;
       }) => {
         return ProductItem.create({
@@ -116,6 +117,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
           name: item.name,
           color: item.color,
           price: item.price,
+          originalPrice: item.originalPrice || item.price,
           status: item.status || ProductItemStatus.AVAILABLE,
           createdAt: timestamp,
           updatedAt: timestamp,

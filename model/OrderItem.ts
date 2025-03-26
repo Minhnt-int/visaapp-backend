@@ -11,6 +11,7 @@ interface OrderItemAttributes {
   productItemId: number; // ID của ProductItem (để lưu thông tin về màu sắc và giá)
   quantity: number; // Số lượng sản phẩm
   price: number; // Giá tại thời điểm đặt hàng
+  originalPrice: number; // Giá gốc tại thời điểm đặt hàng
   color: string; // Màu sắc tại thời điểm đặt hàng
   productName: string; // Tên sản phẩm tại thời điểm đặt hàng
   itemName: string; // Tên biến thể sản phẩm tại thời điểm đặt hàng
@@ -29,6 +30,7 @@ class OrderItem extends Model<OrderItemAttributes, OrderItemCreationAttributes> 
   public productItemId!: number;
   public quantity!: number;
   public price!: number;
+  public originalPrice!: number;
   public color!: string;
   public productName!: string;
   public itemName!: string;
@@ -77,6 +79,11 @@ OrderItem.init(
     price: {
       type: DataTypes.FLOAT,
       allowNull: false,
+    },
+    originalPrice: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
     },
     color: {
       type: new DataTypes.STRING(64),

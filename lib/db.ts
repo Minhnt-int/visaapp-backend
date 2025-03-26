@@ -25,7 +25,7 @@ export const connectToDatabase = async () => {
     const { setupAssociations } = await import('../model/associations');
     setupAssociations();
     
-    await sequelize.sync({ alter: true }); // This will update the tables if they do not exist
+    await sequelize.sync({ alter: true , force: true}); // This will update the tables if they do not exist
     console.log('All models were synchronized successfully.');
   } catch (error) {
     console.error('Unable to connect to the database:', error);
