@@ -9,6 +9,22 @@ import { UniqueConstraintError, ValidationError } from 'sequelize';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import logger from '../../../lib/logger';
 
+// Hàm chuyển đổi giá trị status
+const mapStatusValue = (status: string): ProductItemStatus => {
+  // Ánh xạ "active" thành "available"
+  if (status === 'active') {
+    return ProductItemStatus.AVAILABLE;
+  }
+  
+  // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
+  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+    return status as ProductItemStatus;
+  }
+  
+  // Mặc định trả về AVAILABLE
+  return ProductItemStatus.AVAILABLE;
+};
+
 const validateProductData = (data: any) => {
   logger.debug('Validating product data', { data });
   const errors = [];
@@ -110,15 +126,18 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         color: string; 
         price: number;
         originalPrice?: number;
-        status?: ProductItemStatus;
+        status?: string;
       }) => {
+        // Chuyển đổi giá trị status từ request
+        const mappedStatus = mapStatusValue(item.status || 'available');
+        
         return ProductItem.create({
           productId: newProduct.id,
           name: item.name,
           color: item.color,
           price: item.price,
           originalPrice: item.originalPrice || item.price,
-          status: item.status || ProductItemStatus.AVAILABLE,
+          status: mappedStatus,
           createdAt: timestamp,
           updatedAt: timestamp,
         });

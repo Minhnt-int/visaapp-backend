@@ -3,9 +3,25 @@ import { connectToDatabase } from '../../../lib/db';
 import Order, { OrderStatus } from '../../../model/Order';
 import OrderItem from '../../../model/OrderItem';
 import Product from '../../../model/Product';
-import ProductItem from '../../../model/ProductItem';
+import ProductItem, { ProductItemStatus } from '../../../model/ProductItem';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
+
+// Hàm chuyển đổi giá trị status
+const mapStatusValue = (status: string): ProductItemStatus => {
+  // Ánh xạ "active" thành "available"
+  if (status === 'active') {
+    return ProductItemStatus.AVAILABLE;
+  }
+  
+  // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
+  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+    return status as ProductItemStatus;
+  }
+  
+  // Mặc định trả về AVAILABLE
+  return ProductItemStatus.AVAILABLE;
+};
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
@@ -68,6 +84,9 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         throw new AppError(400, `Product with ID ${productItem.productId} not found`, 'NOT_FOUND');
       }
 
+      // Đảm bảo status đúng với enum ProductItemStatus
+      const mappedStatus = mapStatusValue(productItem.status);
+
       // Tạo chi tiết đơn hàng
       const orderItem = await OrderItem.create({
         orderId: order.id,
@@ -79,7 +98,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         color: productItem.color,
         productName: product.name,
         itemName: productItem.name,
-        itemStatus: productItem.status,
+        itemStatus: mappedStatus,
         createdAt: timestamp,
         updatedAt: timestamp,
       });

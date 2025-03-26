@@ -1,8 +1,25 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import Order from '../../../model/Order';
+import Order, { OrderStatus } from '../../../model/Order';
 import OrderItem from '../../../model/OrderItem';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
+
+// Hàm chuyển đổi giá trị status cho Order
+const mapOrderStatusValue = (status: string): OrderStatus => {
+  // Kiểm tra nếu giá trị status thuộc enum OrderStatus
+  if (Object.values(OrderStatus).includes(status as OrderStatus)) {
+    return status as OrderStatus;
+  }
+  
+  // Ánh xạ một số trường hợp phổ biến
+  if (status === 'processing') return OrderStatus.CONFIRMED;
+  if (status === 'shipped') return OrderStatus.SHIPPING;
+  if (status === 'completed') return OrderStatus.DELIVERED;
+  if (status === 'cancelled' || status === 'canceled') return OrderStatus.CANCELLED;
+  
+  // Mặc định trả về PENDING
+  return OrderStatus.PENDING;
+};
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   await connectToDatabase();
@@ -47,7 +64,8 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     
     // Chỉ cập nhật các trường được cung cấp
     if (status !== undefined) {
-      updateData.status = status;
+      // Đảm bảo status đúng với enum OrderStatus
+      updateData.status = mapOrderStatusValue(status);
     }
     
     if (recipientName !== undefined) {

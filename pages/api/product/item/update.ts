@@ -3,6 +3,22 @@ import { connectToDatabase } from '../../../../lib/db';
 import ProductItem, { ProductItemStatus } from '../../../../model/ProductItem';
 import { asyncHandler, AppError } from '../../../../lib/error-handler';
 
+// Hàm chuyển đổi giá trị status
+const mapStatusValue = (status: string): ProductItemStatus => {
+  // Ánh xạ "active" thành "available"
+  if (status === 'active') {
+    return ProductItemStatus.AVAILABLE;
+  }
+  
+  // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
+  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+    return status as ProductItemStatus;
+  }
+  
+  // Mặc định trả về AVAILABLE
+  return ProductItemStatus.AVAILABLE;
+};
+
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'PUT') {
     throw new AppError(405, `Method ${req.method} Not Allowed`, 'METHOD_NOT_ALLOWED');
@@ -15,11 +31,6 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   // Kiểm tra ID
   if (!id) {
     throw new AppError(400, 'Missing product item ID', 'VALIDATION_ERROR');
-  }
-
-  // Kiểm tra trạng thái hợp lệ
-  if (status && !Object.values(ProductItemStatus).includes(status)) {
-    throw new AppError(400, 'Invalid status value', 'VALIDATION_ERROR');
   }
 
   // Tìm ProductItem
@@ -54,7 +65,8 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   }
   
   if (status !== undefined) {
-    updateData.status = status;
+    // Chuyển đổi giá trị status từ request
+    updateData.status = mapStatusValue(status);
   }
 
   try {

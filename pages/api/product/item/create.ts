@@ -5,6 +5,22 @@ import ProductItem, { ProductItemStatus } from '../../../../model/ProductItem';
 import moment from 'moment-timezone';
 import { asyncHandler, AppError } from '../../../../lib/error-handler';
 
+// Hàm chuyển đổi giá trị status
+const mapStatusValue = (status: string): ProductItemStatus => {
+  // Ánh xạ "active" thành "available"
+  if (status === 'active') {
+    return ProductItemStatus.AVAILABLE;
+  }
+  
+  // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
+  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+    return status as ProductItemStatus;
+  }
+  
+  // Mặc định trả về AVAILABLE
+  return ProductItemStatus.AVAILABLE;
+};
+
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     throw new AppError(405, `Method ${req.method} Not Allowed`, 'METHOD_NOT_ALLOWED');
@@ -30,10 +46,8 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     throw new AppError(400, 'Original price must be a positive number', 'VALIDATION_ERROR');
   }
 
-  // Kiểm tra trạng thái hợp lệ
-  if (status && !Object.values(ProductItemStatus).includes(status)) {
-    throw new AppError(400, 'Invalid status value', 'VALIDATION_ERROR');
-  }
+  // Xử lý trạng thái, không cần kiểm tra nữa vì đã có hàm mapStatusValue
+  const mappedStatus = mapStatusValue(status || 'available');
 
   // Kiểm tra sản phẩm có tồn tại
   const product = await Product.findByPk(productId);
@@ -52,7 +66,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       color,
       price,
       originalPrice: finalOriginalPrice,
-      status: status || ProductItemStatus.AVAILABLE,
+      status: mappedStatus,
       createdAt: timestamp,
       updatedAt: timestamp,
     });

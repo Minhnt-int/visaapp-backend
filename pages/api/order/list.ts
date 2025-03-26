@@ -1,7 +1,25 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import Order from '../../../model/Order';
+import Order, { OrderStatus } from '../../../model/Order';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
+import { Op } from 'sequelize';
+
+// Hàm chuyển đổi giá trị status cho Order
+const mapOrderStatusValue = (status: string): OrderStatus => {
+  // Kiểm tra nếu giá trị status thuộc enum OrderStatus
+  if (Object.values(OrderStatus).includes(status as OrderStatus)) {
+    return status as OrderStatus;
+  }
+  
+  // Ánh xạ một số trường hợp phổ biến
+  if (status === 'processing') return OrderStatus.CONFIRMED;
+  if (status === 'shipped') return OrderStatus.SHIPPING;
+  if (status === 'completed') return OrderStatus.DELIVERED;
+  if (status === 'cancelled' || status === 'canceled') return OrderStatus.CANCELLED;
+  
+  // Mặc định trả về PENDING
+  return OrderStatus.PENDING;
+};
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'GET') {
@@ -31,21 +49,22 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   }
 
   if (status) {
-    whereConditions.status = status;
+    // Đảm bảo status đúng với enum OrderStatus
+    whereConditions.status = mapOrderStatusValue(status as string);
   }
 
   // Nếu có ngày bắt đầu và kết thúc, tìm các đơn hàng trong khoảng thời gian
   if (startDate && endDate) {
     whereConditions.createdAt = {
-      $between: [new Date(startDate as string), new Date(endDate as string)]
+      [Op.between]: [new Date(startDate as string), new Date(endDate as string)]
     };
   } else if (startDate) {
     whereConditions.createdAt = {
-      $gte: new Date(startDate as string)
+      [Op.gte]: new Date(startDate as string)
     };
   } else if (endDate) {
     whereConditions.createdAt = {
-      $lte: new Date(endDate as string)
+      [Op.lte]: new Date(endDate as string)
     };
   }
 

@@ -2,10 +2,26 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import Order from '../../../model/Order';
 import OrderItem from '../../../model/OrderItem';
-import ProductItem from '../../../model/ProductItem';
+import ProductItem, { ProductItemStatus } from '../../../model/ProductItem';
 import Product from '../../../model/Product';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
+
+// Hàm chuyển đổi giá trị status
+const mapStatusValue = (status: string): ProductItemStatus => {
+  // Ánh xạ "active" thành "available"
+  if (status === 'active') {
+    return ProductItemStatus.AVAILABLE;
+  }
+  
+  // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
+  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+    return status as ProductItemStatus;
+  }
+  
+  // Mặc định trả về AVAILABLE
+  return ProductItemStatus.AVAILABLE;
+};
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   await connectToDatabase();
@@ -29,6 +45,9 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     if (!productItem) {
       throw new AppError(404, 'Product item not found', 'NOT_FOUND');
     }
+
+    // Đảm bảo status đúng với enum ProductItemStatus
+    const mappedStatus = mapStatusValue(productItem.status);
 
     // Kiểm tra xem đã có sản phẩm này trong đơn hàng chưa
     const existingItem = await OrderItem.findOne({
@@ -80,7 +99,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         color: productItem.color,
         productName: product.name,
         itemName: productItem.name,
-        itemStatus: productItem.status,
+        itemStatus: mappedStatus,
         createdAt: timestamp,
         updatedAt: timestamp,
       });

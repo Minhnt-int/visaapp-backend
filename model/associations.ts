@@ -1,9 +1,6 @@
 import Product from './Product';
 import ProductItem from './ProductItem';
 
-// Sau khi đã import tất cả các model
-setupAssociations();
-
 export function setupAssociations() {
   // Thiết lập quan hệ giữa Product và ProductItem
   Product.hasMany(ProductItem, {
@@ -17,3 +14,6 @@ export function setupAssociations() {
     as: 'product',
   });
 }
+
+// Gọi setupAssociations() sau khi định nghĩa
+setupAssociations();
