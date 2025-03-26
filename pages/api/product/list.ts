@@ -1,8 +1,9 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { Op } from 'sequelize';
+import { Op, Sequelize } from 'sequelize';
 import Product from '../../../model/Product';
 import ProductCategory from '../../../model/ProductCategory';
 import ProductMedia from '../../../model/ProductMedia';
+import ProductItem from '../../../model/ProductItem';
 import logger from '../../../lib/logger';
 import { asyncHandler } from '../../../lib/error-handler';
 
@@ -27,7 +28,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const {
     page = '1',
     limit = '10',
-    category,
+    categoryId,
     search,
     minPrice,
     maxPrice,
@@ -40,7 +41,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     requestId,
     page,
     limit,
-    category,
+    categoryId,
     search,
     minPrice,
     maxPrice,
@@ -61,35 +62,41 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     return res.status(400).json({ message: 'Invalid pagination parameters' });
   }
 
+  // Tính offset phân trang
+  const offset = (pageNumber - 1) * itemsPerPage;
+
   // Build query conditions
   const where: any = {};
+  const itemWhere: any = {};
+  const categoryWhere: any = {};
 
   if (search) {
-    where.name = {
-      [Op.like]: `%${search}%`
-    };
-    logger.debug('Added search condition', {
+    // Tìm kiếm theo tên sản phẩm hoặc tên danh mục
+    const searchTerm = `%${search}%`;
+    // Không đặt where.name trực tiếp vì chúng ta sẽ sử dụng [Op.or]
+    logger.debug('Added search condition for product name and category name', {
       requestId,
       searchTerm: search
     });
   }
 
+  // Chuyển filter giá từ Product sang ProductItem
   if (minPrice || maxPrice) {
-    where.price = {};
-    if (minPrice) where.price[Op.gte] = parseFloat(minPrice as string);
-    if (maxPrice) where.price[Op.lte] = parseFloat(maxPrice as string);
-    logger.debug('Added price range condition', {
+    if (minPrice) itemWhere.price = { ...itemWhere.price, [Op.gte]: parseFloat(minPrice as string) };
+    if (maxPrice) itemWhere.price = { ...itemWhere.price, [Op.lte]: parseFloat(maxPrice as string) };
+    logger.debug('Added price range condition for ProductItem', {
       requestId,
       minPrice,
       maxPrice
     });
   }
 
-  if (category) {
-    where.categoryId = category;
+  // Tìm kiếm theo categoryId
+  if (categoryId) {
+    where.categoryId = categoryId;
     logger.debug('Added category filter', {
       requestId,
-      categoryId: category
+      categoryId
     });
   }
 
@@ -97,34 +104,53 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const startTime = Date.now();
 
   try {
-    // Execute query
-    const { count, rows: products } = await Product.findAndCountAll({
+    // Xây dựng truy vấn
+    const query: any = {
       where,
+      distinct: true, // Đảm bảo đếm đúng tổng số sản phẩm
       include: [
         {
           model: ProductCategory,
-          as: 'category'
+          as: 'category',
+          required: true, // Cần thiết để tìm kiếm theo tên danh mục
+          where: categoryWhere
         },
         {
           model: ProductMedia,
           as: 'media',
+          required: false,
           limit: 2,
           where: {
-            type: 'image' // Thêm điều kiện type là image
+            type: 'image'
           }
+        },
+        {
+          model: ProductItem,
+          as: 'items',
+          required: true, // Yêu cầu sản phẩm phải có ít nhất một biến thể
+          where: itemWhere // Áp dụng điều kiện lọc cho ProductItem (ví dụ: lọc theo giá)
         }
-      ],
-      attributes: [
-        'id',
-        'name',
-        'description',
-        'price',
-        'quantity'
       ],
       order: [[sortBy as string, sortOrder as string]],
       limit: itemsPerPage,
-      offset: (pageNumber - 1) * itemsPerPage
-    });
+      offset: offset
+    };
+
+    // Thêm điều kiện tìm kiếm nếu có tham số search
+    if (search) {
+      const searchTerm = `%${search}%`;
+      query.where = {
+        ...query.where,
+        [Op.or]: [
+          { name: { [Op.like]: searchTerm } },
+          // Sử dụng Sequelize để tìm kiếm theo tên danh mục
+          Sequelize.literal(`category.name LIKE '${searchTerm.replace(/'/g, "\\'")}'`)
+        ]
+      };
+    }
+
+    // Execute query
+    const { count, rows: products } = await Product.findAndCountAll(query);
 
     const totalPages = Math.ceil(count / itemsPerPage);
 
@@ -142,6 +168,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       pagination: {
         total: count,
         page: pageNumber,
+        limit: itemsPerPage,
+        offset: offset,
         totalPages,
         hasMore: pageNumber < totalPages
       }
