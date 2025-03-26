@@ -3,6 +3,7 @@ import { connectToDatabase } from '../../../lib/db';
 import ProductCategory from '../../../model/ProductCategory';
 import Product from '../../../model/Product';
 import ProductMedia from '../../../model/ProductMedia';
+import ProductItem, { ProductItemStatus } from '../../../model/ProductItem';
 import moment from 'moment-timezone';
 import { UniqueConstraintError, ValidationError } from 'sequelize';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
@@ -13,9 +14,24 @@ const validateProductData = (data: any) => {
   const errors = [];
   
   if (!data.name?.trim()) errors.push('Name is required');
-  if (!data.price || data.price < 0) errors.push('Price must be a positive number');
   if (!data.categoryId) errors.push('Category ID is required');
   if (!data.slug?.trim()) errors.push('Slug is required');
+  
+  // Kiểm tra nếu có items (các biến thể sản phẩm)
+  if (data.items && Array.isArray(data.items)) {
+    if (data.items.length === 0) {
+      errors.push('At least one product item is required');
+    } else {
+      // Kiểm tra từng item
+      data.items.forEach((item: any, index: number) => {
+        if (!item.name) errors.push(`Item ${index + 1}: Name is required`);
+        if (!item.color) errors.push(`Item ${index + 1}: Color is required`);
+        if (item.price === undefined || item.price < 0) errors.push(`Item ${index + 1}: Price must be a positive number`);
+      });
+    }
+  } else {
+    errors.push('At least one product item is required');
+  }
   
   if (errors.length > 0) {
     logger.warn('Product validation failed', { errors });
@@ -39,8 +55,9 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   });
 
   const { 
-    name, price, description, categoryId, slug, 
-    metaTitle, metaDescription, metaKeywords, media 
+    name, description, categoryId, slug, 
+    metaTitle, metaDescription, metaKeywords, 
+    items, media 
   } = req.body;
 
   // Validate input data
@@ -60,13 +77,12 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
 
   try {
     logger.debug('Attempting to create product', { 
-      name, price, categoryId, slug 
+      name, categoryId, slug 
     });
 
     // Create product
     const newProduct = await Product.create({
       name,
-      price,
       description,
       categoryId,
       slug,
@@ -81,6 +97,37 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       productId: newProduct.id,
       name: newProduct.name
     });
+
+    // Tạo các biến thể sản phẩm (ProductItem)
+    if (items?.length > 0) {
+      logger.debug('Processing product items', { 
+        productId: newProduct.id,
+        itemCount: items.length 
+      });
+
+      const itemPromises = items.map((item: { 
+        name: string; 
+        color: string; 
+        price: number;
+        status?: ProductItemStatus;
+      }) => {
+        return ProductItem.create({
+          productId: newProduct.id,
+          name: item.name,
+          color: item.color,
+          price: item.price,
+          status: item.status || ProductItemStatus.AVAILABLE,
+          createdAt: timestamp,
+          updatedAt: timestamp,
+        });
+      });
+
+      const productItems = await Promise.all(itemPromises);
+      logger.debug('Product items created successfully', {
+        productId: newProduct.id,
+        itemCount: productItems.length
+      });
+    }
 
     // Add media if provided
     if (media?.length > 0) {
@@ -106,16 +153,31 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       });
     }
 
+    // Lấy sản phẩm đầy đủ với items và media
+    const productWithDetails = await Product.findByPk(newProduct.id, {
+      include: [
+        {
+          model: ProductMedia,
+          as: 'media'
+        },
+        {
+          model: ProductItem,
+          as: 'items'
+        }
+      ]
+    });
+
     logger.info('Product creation completed', { 
       productId: newProduct.id,
       name: newProduct.name,
       categoryId: newProduct.categoryId,
+      itemCount: items?.length || 0,
       mediaCount: media?.length || 0
     });
 
     res.status(201).json({ 
       success: true,
-      data: { ...newProduct.toJSON(), id: newProduct.id }
+      data: productWithDetails
     });
 
   } catch (error) {
