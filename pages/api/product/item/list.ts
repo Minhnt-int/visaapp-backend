@@ -21,7 +21,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   const whereCondition: any = { productId };
 
   // Nếu có trạng thái, thêm vào điều kiện
-  if (status && Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
+  if (status && typeof status === 'string' && Object.values(ProductItemStatus).includes(status)) {
     whereCondition.status = status;
   }
 

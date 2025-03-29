@@ -4,15 +4,15 @@ import { Order, OrderStatus, OrderItem } from '../../../model';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 
 // Hàm chuyển đổi giá trị status cho Order
-const mapOrderStatusValue = (status: string): OrderStatus => {
+const mapOrderStatusValue = (status: string): string => {
   // Kiểm tra nếu giá trị status thuộc enum OrderStatus
-  if (Object.values(OrderStatus).includes(status as OrderStatus)) {
-    return status as OrderStatus;
+  if (Object.values(OrderStatus).includes(status)) {
+    return status;
   }
   
   // Ánh xạ một số trường hợp phổ biến
-  if (status === 'processing') return OrderStatus.CONFIRMED;
-  if (status === 'shipped') return OrderStatus.SHIPPING;
+  if (status === 'processing') return OrderStatus.PROCESSING;
+  if (status === 'shipped') return OrderStatus.SHIPPED;
   if (status === 'completed') return OrderStatus.DELIVERED;
   if (status === 'cancelled' || status === 'canceled') return OrderStatus.CANCELLED;
   
