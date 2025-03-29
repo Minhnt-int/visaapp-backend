@@ -1,7 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import Order, { OrderStatus } from '../../../model/Order';
-import OrderItem from '../../../model/OrderItem';
+import { Order, OrderStatus, OrderItem } from '../../../model';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 
 // Hàm chuyển đổi giá trị status cho Order

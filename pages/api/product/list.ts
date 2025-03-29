@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductCategory, ProductItem, ProductMedia } from '../../../model';
-import { ProductItemStatus } from '../../../model';
+import { Product, ProductCategory, ProductMedia } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler } from '../../../lib/error-handler';
 
@@ -23,11 +22,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           model: ProductCategory,
           as: 'category',
           attributes: ['id', 'name', 'slug'],
-        },
-        {
-          model: ProductItem,
-          as: 'items',
-          attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status'],
         },
         {
           model: ProductMedia,

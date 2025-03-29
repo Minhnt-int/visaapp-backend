@@ -8,6 +8,15 @@ export const ProductItemStatus = {
   DISCONTINUED: 'discontinued'
 };
 
+// Định nghĩa enum OrderStatus
+export const OrderStatus = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled'
+};
+
 // ProductCategory Model
 export interface ProductCategoryAttributes {
   id: number;
@@ -297,6 +306,199 @@ ProductMedia.init(
   }
 );
 
+// Order Model
+export interface OrderAttributes {
+  id: number;
+  userId?: number;
+  recipientName: string;
+  recipientPhone: string;
+  recipientAddress: string;
+  notes?: string;
+  status: string;
+  totalAmount: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface OrderCreationAttributes extends Optional<OrderAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+
+class Order extends Model<OrderAttributes, OrderCreationAttributes> implements OrderAttributes {
+  public id!: number;
+  public userId?: number;
+  public recipientName!: string;
+  public recipientPhone!: string;
+  public recipientAddress!: string;
+  public notes!: string;
+  public status!: string;
+  public totalAmount!: number;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+Order.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    userId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+    },
+    recipientName: {
+      type: new DataTypes.STRING(128),
+      allowNull: false,
+    },
+    recipientPhone: {
+      type: new DataTypes.STRING(20),
+      allowNull: false,
+    },
+    recipientAddress: {
+      type: new DataTypes.STRING(256),
+      allowNull: false,
+    },
+    notes: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(OrderStatus)),
+      allowNull: false,
+      defaultValue: OrderStatus.PENDING,
+    },
+    totalAmount: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    tableName: 'orders',
+    sequelize,
+    timestamps: true,
+  }
+);
+
+// OrderItem Model
+export interface OrderItemAttributes {
+  id: number;
+  orderId: number;
+  productId: number;
+  productItemId: number;
+  quantity: number;
+  price: number;
+  originalPrice: number;
+  color: string;
+  productName: string;
+  itemName: string;
+  itemStatus: string;
+  subtotal?: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface OrderItemCreationAttributes extends Optional<OrderItemAttributes, 'id' | 'subtotal' | 'createdAt' | 'updatedAt'> {}
+
+class OrderItem extends Model<OrderItemAttributes, OrderItemCreationAttributes> implements OrderItemAttributes {
+  public id!: number;
+  public orderId!: number;
+  public productId!: number;
+  public productItemId!: number;
+  public quantity!: number;
+  public price!: number;
+  public originalPrice!: number;
+  public color!: string;
+  public productName!: string;
+  public itemName!: string;
+  public itemStatus!: string;
+  public subtotal!: number;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+OrderItem.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    orderId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
+    productId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
+    productItemId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
+    quantity: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 1,
+    },
+    price: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+    },
+    originalPrice: {
+      type: DataTypes.FLOAT,
+      allowNull: false,
+    },
+    color: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+    },
+    productName: {
+      type: DataTypes.STRING(128),
+      allowNull: false,
+    },
+    itemName: {
+      type: DataTypes.STRING(128),
+      allowNull: false,
+    },
+    itemStatus: {
+      type: DataTypes.STRING(64),
+      allowNull: false,
+    },
+    subtotal: {
+      type: DataTypes.VIRTUAL,
+      get() {
+        return this.getDataValue('price') * this.getDataValue('quantity');
+      },
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    tableName: 'order_items',
+    sequelize,
+    timestamps: true,
+  }
+);
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -346,4 +548,27 @@ ProductCategory.hasMany(ProductCategory, {
   as: 'children',
 });
 
-export { Product, ProductCategory, ProductItem, ProductMedia }; 
+// Order - OrderItem
+Order.hasMany(OrderItem, {
+  sourceKey: 'id',
+  foreignKey: 'orderId',
+  as: 'items',
+});
+
+OrderItem.belongsTo(Order, {
+  foreignKey: 'orderId',
+  as: 'order',
+});
+
+// OrderItem - Product/ProductItem
+OrderItem.belongsTo(Product, {
+  foreignKey: 'productId',
+  as: 'product',
+});
+
+OrderItem.belongsTo(ProductItem, {
+  foreignKey: 'productItemId',
+  as: 'productItem',
+});
+
+export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem }; 

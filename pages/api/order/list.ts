@@ -1,6 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
+import { Order, OrderStatus, OrderItem } from '../../../model';
 import { connectToDatabase } from '../../../lib/db';
-import Order, { OrderStatus } from '../../../model/Order';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import { Op } from 'sequelize';
 

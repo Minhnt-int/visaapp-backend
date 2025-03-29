@@ -1,21 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductItem, ProductItemStatus } from '../../../model';
-import Order from '../../../model/Order';
-import OrderItem from '../../../model/OrderItem';
+import { Product, ProductItem, ProductItemStatus, Order, OrderItem } from '../../../model';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
 
 // Hàm chuyển đổi giá trị status
-const mapStatusValue = (status: string): ProductItemStatus => {
+const mapStatusValue = (status: string): string => {
   // Ánh xạ "active" thành "available"
   if (status === 'active') {
     return ProductItemStatus.AVAILABLE;
   }
   
   // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
-  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
-    return status as ProductItemStatus;
+  if (Object.values(ProductItemStatus).includes(status)) {
+    return status;
   }
   
   // Mặc định trả về AVAILABLE

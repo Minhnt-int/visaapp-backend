@@ -1,8 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductItem, ProductItemStatus } from '../../../model';
-import Order, { OrderStatus } from '../../../model/Order';
-import OrderItem from '../../../model/OrderItem';
+import { Product, ProductItem, ProductItemStatus, Order, OrderItem, OrderStatus } from '../../../model';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
 
