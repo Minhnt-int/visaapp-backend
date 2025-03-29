@@ -2,10 +2,14 @@ import { DataTypes, Model, Optional } from 'sequelize';
 import sequelize from '../lib/db';
 import logger from '../lib/logger';
 
-interface ProductCategoryAttributes {
+export interface ProductCategoryAttributes {
   id: number;
   name: string;
+  slug: string;
+  description?: string;
   parentId?: number | null;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 interface ProductCategoryCreationAttributes extends Optional<ProductCategoryAttributes, 'id'> {}
@@ -13,7 +17,11 @@ interface ProductCategoryCreationAttributes extends Optional<ProductCategoryAttr
 class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCreationAttributes> implements ProductCategoryAttributes {
   public id!: number;
   public name!: string;
+  public slug!: string;
+  public description!: string;
   public parentId?: number | null;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
 
   // Add logging hooks
   static async findByPkWithLogging(id: number) {
@@ -46,6 +54,15 @@ ProductCategory.init(
       type: new DataTypes.STRING(128),
       allowNull: false,
     },
+    slug: {
+      type: new DataTypes.STRING(128),
+      allowNull: false,
+      unique: true,
+    },
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
     parentId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
@@ -58,6 +75,7 @@ ProductCategory.init(
   {
     tableName: 'product_categories',
     sequelize,
+    timestamps: true,
     indexes: [
       {
         fields: ['name'],
