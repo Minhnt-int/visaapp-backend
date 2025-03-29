@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import logger from './logger';
 import cors, { runMiddleware } from './cors'; // Import middleware CORS
+import { connectToDatabase } from './db';
 
 export class AppError extends Error {
   constructor(

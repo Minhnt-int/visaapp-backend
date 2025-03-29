@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import ProductCategory from '../../../model/ProductCategory';
+import { ProductCategory } from '../../../model';
 import { Op } from 'sequelize';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';

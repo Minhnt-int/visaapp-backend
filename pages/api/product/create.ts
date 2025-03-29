@@ -1,24 +1,21 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import ProductCategory from '../../../model/ProductCategory';
-import Product from '../../../model/Product';
-import ProductMedia from '../../../model/ProductMedia';
-import ProductItem, { ProductItemStatus } from '../../../model/ProductItem';
+import { Product, ProductCategory, ProductItem, ProductMedia, ProductItemStatus } from '../../../model';
 import moment from 'moment-timezone';
 import { UniqueConstraintError, ValidationError } from 'sequelize';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import logger from '../../../lib/logger';
 
 // Hàm chuyển đổi giá trị status
-const mapStatusValue = (status: string): ProductItemStatus => {
+const mapStatusValue = (status: string): string => {
   // Ánh xạ "active" thành "available"
   if (status === 'active') {
     return ProductItemStatus.AVAILABLE;
   }
   
   // Kiểm tra nếu giá trị status thuộc enum ProductItemStatus
-  if (Object.values(ProductItemStatus).includes(status as ProductItemStatus)) {
-    return status as ProductItemStatus;
+  if (Object.values(ProductItemStatus).includes(status)) {
+    return status;
   }
   
   // Mặc định trả về AVAILABLE
@@ -104,9 +101,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       slug,
       metaTitle,
       metaDescription,
-      metaKeywords,
-      createdAt: timestamp,
-      updatedAt: timestamp,
+      metaKeywords
     });
 
     logger.debug('Product created successfully', { 
@@ -137,9 +132,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
           color: item.color,
           price: item.price,
           originalPrice: item.originalPrice || item.price,
-          status: mappedStatus,
-          createdAt: timestamp,
-          updatedAt: timestamp,
+          status: mappedStatus
         });
       });
 
@@ -161,9 +154,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         return ProductMedia.create({
           productId: newProduct.id,
           type: mediaItem.type,
-          url: mediaItem.url,
-          createdAt: timestamp,
-          updatedAt: timestamp,
+          url: mediaItem.url
         });
       });
 
@@ -195,6 +186,21 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       itemCount: items?.length || 0,
       mediaCount: media?.length || 0
     });
+
+    // Kiểm tra và chuyển đổi trạng thái biến thể
+    for (const item of items || []) {
+      // Chuyển đổi trạng thái từ "active" thành "available" nếu cần
+      if (item.status === 'active') {
+        item.status = ProductItemStatus.AVAILABLE;
+      }
+
+      // Kiểm tra trạng thái hợp lệ
+      if (!Object.values(ProductItemStatus).includes(item.status)) {
+        return res.status(400).json({
+          message: `Trạng thái sản phẩm không hợp lệ: ${item.status}. Các trạng thái hợp lệ: ${Object.values(ProductItemStatus).join(', ')}`
+        });
+      }
+    }
 
     res.status(201).json({ 
       success: true,

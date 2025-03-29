@@ -1,5 +1,4 @@
-import Product from './Product';
-import ProductItem from './ProductItem';
+import { Product, ProductItem } from '../model';
 
 export function setupAssociations() {
   // Thiết lập quan hệ giữa Product và ProductItem

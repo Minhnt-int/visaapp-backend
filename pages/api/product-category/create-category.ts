@@ -1,9 +1,10 @@
 // filepath: /Users/duy/nextjs project/web-qua-tang/pages/api/product-category/create-category.ts
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import ProductCategory from '../../../model/ProductCategory';
+import { ProductCategory } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
+import slugify from 'slugify';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
@@ -51,7 +52,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         parentId
       });
 
-      const parentCategory = await ProductCategory.findByPkWithLogging(parentId);
+      const parentCategory = await ProductCategory.findByPk(parentId);
       if (!parentCategory) {
         logger.warn('Parent category not found', {
           requestId,
@@ -84,31 +85,35 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       throw new AppError(400, 'Category with this name already exists at this level', 'DUPLICATE_NAME');
     }
 
+    // Generate slug from name
+    const slug = slugify(name, { lower: true }) + "-" + Date.now();
+
     // Create new category
     logger.debug('Creating new category', {
       requestId,
       name,
+      slug,
       parentId: parentId || 'root'
     });
 
-    const newCategory = ProductCategory.build({
+    const newCategory = await ProductCategory.create({
       name,
+      slug,
       parentId: parentId || null,
-    }, { isNewRecord: true });
-
-    await newCategory.save();
+    });
 
     logger.info('Category created successfully', {
       requestId,
       categoryId: newCategory.id,
       name: newCategory.name,
+      slug: newCategory.slug,
       parentId: newCategory.parentId || 'root',
       processingTime: Date.now() - startTime
     });
 
     res.status(201).json({ 
       message: 'Category created successfully!', 
-      data: {...newCategory.toJSON(), id: newCategory.id },
+      data: newCategory,
     });
 
   } catch (error) {

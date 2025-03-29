@@ -1,6 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../../lib/db';
-import ProductItem, { ProductItemStatus } from '../../../../model/ProductItem';
+import { ProductItem, ProductItemStatus } from '../../../../model';
 import { asyncHandler, AppError } from '../../../../lib/error-handler';
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {

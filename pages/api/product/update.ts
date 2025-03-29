@@ -1,7 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import ProductCategory from '../../../model/ProductCategory';
-import Product from '../../../model/Product';
+import { Product, ProductCategory } from '../../../model';
 import moment from 'moment-timezone';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {

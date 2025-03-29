@@ -263,52 +263,139 @@ ProductCategory.hasMany(ProductCategory, {
   as: 'children',
 });
 
-// Đồng bộ hóa models với cơ sở dữ liệu
-async function syncAllModels() {
+async function seedData() {
   try {
     console.log('Kết nối đến database...');
     await sequelize.authenticate();
     console.log('Kết nối thành công!');
 
-    console.log('Xóa tất cả các bảng hiện có...');
-    
-    // Tắt kiểm tra khóa ngoại tạm thời
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-    
-    // Xóa các bảng theo thứ tự ngược lại với quan hệ khóa ngoại
-    await sequelize.query('DROP TABLE IF EXISTS product_media');
-    await sequelize.query('DROP TABLE IF EXISTS product_items');
-    await sequelize.query('DROP TABLE IF EXISTS products');
-    await sequelize.query('DROP TABLE IF EXISTS product_categories');
-    
-    // Bật lại kiểm tra khóa ngoại
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
-    
-    console.log('Đã xóa tất cả các bảng!');
+    console.log('Bắt đầu tạo dữ liệu mẫu...');
 
-    console.log('Đồng bộ hóa tất cả models...');
-    
-    // Đồng bộ hóa lần lượt từng model theo thứ tự để đảm bảo quan hệ khóa ngoại
-    console.log('1. Đồng bộ hóa ProductCategory...');
-    await ProductCategory.sync({ force: true });
-    
-    console.log('2. Đồng bộ hóa Product...');
-    await Product.sync({ force: true });
-    
-    console.log('3. Đồng bộ hóa ProductItem...');
-    await ProductItem.sync({ force: true });
-    
-    console.log('4. Đồng bộ hóa ProductMedia...');
-    await ProductMedia.sync({ force: true });
-    
-    console.log('Đã đồng bộ hóa tất cả models thành công!');
+    // 1. Tạo danh mục sản phẩm
+    const categories = await ProductCategory.bulkCreate([
+      {
+        name: 'Đồ chơi',
+        slug: 'do-choi',
+        description: 'Các loại đồ chơi cho trẻ em',
+      },
+      {
+        name: 'Sách',
+        slug: 'sach',
+        description: 'Sách truyện và sách học tập',
+      },
+      {
+        name: 'Quần áo',
+        slug: 'quan-ao',
+        description: 'Quần áo trẻ em',
+      },
+    ]);
 
+    // 2. Tạo sản phẩm
+    const products = await Product.bulkCreate([
+      {
+        name: 'Búp bê Barbie',
+        slug: 'bup-be-barbie',
+        description: 'Búp bê Barbie cao cấp',
+        categoryId: categories[0].id,
+        metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
+        metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
+        metaKeywords: 'bup be, barbie, do choi tre em',
+      },
+      {
+        name: 'Truyện cổ tích',
+        slug: 'truyen-co-tich',
+        description: 'Tuyển tập truyện cổ tích Việt Nam',
+        categoryId: categories[1].id,
+        metaTitle: 'Truyện cổ tích Việt Nam',
+        metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
+        metaKeywords: 'truyen co tich, sach tre em',
+      },
+      {
+        name: 'Áo thun nam',
+        slug: 'ao-thun-nam',
+        description: 'Áo thun nam trẻ em',
+        categoryId: categories[2].id,
+        metaTitle: 'Áo thun nam trẻ em',
+        metaDescription: 'Áo thun nam trẻ em chất lượng cao',
+        metaKeywords: 'ao thun, quan ao tre em',
+      },
+    ]);
+
+    // 3. Tạo biến thể sản phẩm
+    await ProductItem.bulkCreate([
+      {
+        productId: products[0].id,
+        name: 'Barbie Classic',
+        color: 'Hồng',
+        price: 299000,
+        originalPrice: 399000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[0].id,
+        name: 'Barbie Princess',
+        color: 'Tím',
+        price: 349000,
+        originalPrice: 449000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[1].id,
+        name: 'Truyện cổ tích - Bản đặc biệt',
+        color: 'Nhiều màu',
+        price: 199000,
+        originalPrice: 249000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[2].id,
+        name: 'Áo thun nam - Size S',
+        color: 'Xanh',
+        price: 159000,
+        originalPrice: 199000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[2].id,
+        name: 'Áo thun nam - Size M',
+        color: 'Xanh',
+        price: 159000,
+        originalPrice: 199000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+    ]);
+
+    // 4. Tạo media cho sản phẩm
+    await ProductMedia.bulkCreate([
+      {
+        productId: products[0].id,
+        type: 'image',
+        url: 'https://example.com/images/barbie-classic.jpg',
+      },
+      {
+        productId: products[0].id,
+        type: 'image',
+        url: 'https://example.com/images/barbie-princess.jpg',
+      },
+      {
+        productId: products[1].id,
+        type: 'image',
+        url: 'https://example.com/images/truyen-co-tich.jpg',
+      },
+      {
+        productId: products[2].id,
+        type: 'image',
+        url: 'https://example.com/images/ao-thun-nam.jpg',
+      },
+    ]);
+
+    console.log('Đã tạo dữ liệu mẫu thành công!');
     process.exit(0);
   } catch (error) {
-    console.error('Đồng bộ hóa thất bại:', error);
+    console.error('Lỗi khi tạo dữ liệu mẫu:', error);
     process.exit(1);
   }
 }
 
-// Chạy đồng bộ hóa
-syncAllModels(); 
+// Chạy tạo dữ liệu mẫu
+seedData(); 

@@ -1,9 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import Product from '../../../model/Product';
-import ProductCategory from '../../../model/ProductCategory';
-import ProductMedia from '../../../model/ProductMedia';
-import ProductItem from '../../../model/ProductItem';
+import { Product, ProductCategory, ProductMedia, ProductItem } from '../../../model';
 import { Op, Sequelize } from 'sequelize';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 

@@ -1,8 +1,6 @@
-import { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import Product from '../../../model/Product';
-import ProductMedia from '../../../model/ProductMedia';
-import ProductItem from '../../../model/ProductItem';
+import { Product, ProductMedia, ProductItem } from '../../../model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();

@@ -1,35 +1,38 @@
 // filepath: /Users/duy/nextjs project/web-qua-tang/lib/db.ts
 import { Sequelize } from 'sequelize';
 
-const host = "192.168.55.254"
-const port = process.env.DB_PORT ? parseInt(process.env.DB_PORT, 10) : 3306;
+// Định nghĩa enum ProductItemStatus
+const ProductItemStatus = {
+  AVAILABLE: 'available',
+  OUT_OF_STOCK: 'out_of_stock',
+  DISCONTINUED: 'discontinued'
+};
 
-const sequelize = new Sequelize('duy', 'root', 'admin', {
-  host: host,
-  port: port,
+// Cấu hình kết nối database
+const sequelize = new Sequelize({
   dialect: 'mysql',
-  dialectOptions: {
-    useUTC: false, // for reading from database
-  },
-  timezone: "+07:00"
+  host: process.env.DB_HOST,
+  port: parseInt(process.env.DB_PORT || '3306'),
+  username: process.env.DB_USERNAME,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+  logging: console.log,
+  timezone: process.env.DB_TIMEZONE || "+07:00"
 });
 
 export const connectToDatabase = async () => {
   try {
     await sequelize.authenticate();
-    console.log('Connection has been established successfully.');
-    
-    // Import các models và thiết lập associations ở đây
-    // Đảm bảo import sau khi sequelize đã được khởi tạo
-    // nhưng trước khi sync
-    const { setupAssociations } = await import('../model/associations');
-    setupAssociations();
-    
-    await sequelize.sync({ alter: true }); // This will update the tables if they do not exist
-    console.log('All models were synchronized successfully.');
+    console.log('Kết nối database thành công!');
+
+    // Import models từ file index
+    require('../model');
+
+    console.log('Đã thiết lập các quan hệ giữa các models!');
   } catch (error) {
-    console.error('Unable to connect to the database:', error);
+    console.error('Lỗi kết nối database:', error);
+    throw error;
   }
-};  
+};
 
 export default sequelize;
