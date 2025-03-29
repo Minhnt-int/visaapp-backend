@@ -32,6 +32,15 @@ const ProductItemStatus = {
   DISCONTINUED: 'discontinued'
 };
 
+// Định nghĩa enum OrderStatus
+const OrderStatus = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled'
+};
+
 // Định nghĩa các models
 // 1. Product model
 const Product = sequelize.define('Product', {
@@ -214,6 +223,91 @@ const ProductMedia = sequelize.define('ProductMedia', {
   timestamps: true,
 });
 
+// 5. BlogCategory model
+const BlogCategory = sequelize.define('BlogCategory', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'blog_categories',
+  timestamps: true,
+});
+
+// 6. BlogPost model
+const BlogPost = sequelize.define('BlogPost', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  title: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  slug: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+    unique: true,
+  },
+  metaTitle: {
+    type: new DataTypes.STRING(256),
+    allowNull: true,
+  },
+  metaDescription: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
+  metaKeywords: {
+    type: new DataTypes.STRING(256),
+    allowNull: true,
+  },
+  author: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+  },
+  publishedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  blogCategoryId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'blog_posts',
+  timestamps: true,
+});
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -263,14 +357,15 @@ ProductCategory.hasMany(ProductCategory, {
   as: 'children',
 });
 
+// Define relationships here...
+
+// Hàm tạo dữ liệu mẫu
 async function seedData() {
   try {
-    console.log('Kết nối đến database...');
     await sequelize.authenticate();
-    console.log('Kết nối thành công!');
+    console.log('Kết nối database thành công.');
 
-    console.log('Bắt đầu tạo dữ liệu mẫu...');
-
+    console.log('Tạo danh mục sản phẩm mẫu...');
     // 1. Tạo danh mục sản phẩm
     const categories = await ProductCategory.bulkCreate([
       {
@@ -389,13 +484,79 @@ async function seedData() {
       },
     ]);
 
+    console.log('Tạo danh mục blog mẫu...');
+    // Tạo danh mục blog mẫu
+    const blogCategories = await BlogCategory.bulkCreate([
+      {
+        name: 'Tin tức',
+      },
+      {
+        name: 'Khuyến mãi',
+      },
+      {
+        name: 'Hướng dẫn',
+      },
+      {
+        name: 'Review sản phẩm',
+      }
+    ]);
+
+    console.log('Tạo bài viết blog mẫu...');
+    // Tạo bài viết blog mẫu
+    await BlogPost.bulkCreate([
+      {
+        title: 'Bật mí cách chọn quà tặng ý nghĩa cho người thân',
+        content: '<p>Bài viết này sẽ giúp bạn hiểu cách chọn quà tặng ý nghĩa cho người thân yêu...</p><p>Khi chọn quà, bạn nên quan tâm đến sở thích của người nhận...</p>',
+        slug: 'bat-mi-cach-chon-qua-tang-y-nghia',
+        metaTitle: 'Cách chọn quà tặng ý nghĩa cho người thân',
+        metaDescription: 'Bài viết chia sẻ những bí quyết chọn quà tặng ý nghĩa cho người thân yêu dịp đặc biệt',
+        metaKeywords: 'quà tặng, ý nghĩa, người thân, bí quyết',
+        author: 'Admin',
+        publishedAt: new Date(),
+        blogCategoryId: blogCategories[0].id
+      },
+      {
+        title: 'Top 10 món quà được yêu thích nhất năm 2023',
+        content: '<p>Năm 2023 đã chứng kiến nhiều xu hướng quà tặng mới...</p><p>Dưới đây là top 10 món quà được yêu thích nhất...</p>',
+        slug: 'top-10-mon-qua-duoc-yeu-thich-nhat-nam-2023',
+        metaTitle: 'Top 10 món quà được yêu thích nhất năm 2023',
+        metaDescription: 'Khám phá những món quà tặng được yêu thích nhất trong năm 2023',
+        metaKeywords: 'quà tặng, top 10, xu hướng, 2023',
+        author: 'Admin',
+        publishedAt: new Date(),
+        blogCategoryId: blogCategories[3].id
+      },
+      {
+        title: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
+        content: '<p>Nhân dịp Tết Dương lịch 2024, chúng tôi có nhiều chương trình khuyến mãi đặc biệt...</p><p>Giảm giá lên đến 50% cho nhiều sản phẩm...</p>',
+        slug: 'khuyen-mai-dac-biet-dip-tet-duong-lich-2024',
+        metaTitle: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
+        metaDescription: 'Thông tin về chương trình khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
+        metaKeywords: 'khuyến mãi, Tết Dương lịch, 2024, giảm giá',
+        author: 'Admin',
+        publishedAt: new Date(),
+        blogCategoryId: blogCategories[1].id
+      },
+      {
+        title: 'Hướng dẫn gói quà đẹp và độc đáo',
+        content: '<p>Bài viết này sẽ hướng dẫn bạn cách gói những món quà đẹp và độc đáo...</p><p>Với một chút sáng tạo, bạn có thể gói quà theo nhiều phong cách khác nhau...</p>',
+        slug: 'huong-dan-goi-qua-dep-va-doc-dao',
+        metaTitle: 'Hướng dẫn gói quà đẹp và độc đáo',
+        metaDescription: 'Học cách gói quà đẹp và độc đáo với các kỹ thuật gói quà sáng tạo',
+        metaKeywords: 'gói quà, hướng dẫn, sáng tạo, độc đáo',
+        author: 'Admin',
+        publishedAt: new Date(),
+        blogCategoryId: blogCategories[2].id
+      }
+    ]);
+
     console.log('Đã tạo dữ liệu mẫu thành công!');
-    process.exit(0);
   } catch (error) {
     console.error('Lỗi khi tạo dữ liệu mẫu:', error);
-    process.exit(1);
+  } finally {
+    await sequelize.close();
   }
 }
 
-// Chạy tạo dữ liệu mẫu
+// Chạy hàm tạo dữ liệu mẫu
 seedData(); 

@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import BlogPost from '../../../model/BlogPost';
-import BlogCategory from '../../../model/BlogCategory';
+import { BlogPost, BlogCategory } from '../../../model';
 import moment from 'moment-timezone';
 import formidable from 'formidable';
 import fs from 'fs';

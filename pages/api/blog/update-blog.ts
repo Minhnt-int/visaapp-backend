@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import BlogPost from '../../../model/BlogPost';
-import BlogCategory from '../../../model/BlogCategory';
+import { BlogPost, BlogCategory } from '../../../model';
 import moment from 'moment-timezone';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
@@ -140,8 +139,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       blogPost.publishedAt = newPublishedAt;
     }
 
-    blogPost.updatedAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
-
+    // Don't set updatedAt manually, Sequelize will handle it
+    
     logger.debug('Updating blog post', {
       requestId,
       blogId: id,

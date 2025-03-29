@@ -571,4 +571,179 @@ OrderItem.belongsTo(ProductItem, {
   as: 'productItem',
 });
 
-export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem }; 
+// BlogCategory Model
+export interface BlogCategoryAttributes {
+  id: number;
+  name: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface BlogCategoryCreationAttributes extends Optional<BlogCategoryAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+
+class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAttributes> implements BlogCategoryAttributes {
+  public id!: number;
+  public name!: string;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+BlogCategory.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: new DataTypes.STRING(256),
+      allowNull: false,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    tableName: 'blog_categories',
+    sequelize,
+    timestamps: true,
+    indexes: [
+      {
+        fields: ['name'],
+      },
+    ],
+  }
+);
+
+// BlogPost Model
+export interface BlogPostAttributes {
+  id: number;
+  title: string;
+  content: string;
+  slug: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  author: string;
+  publishedAt?: Date;
+  viewCount?: number;
+  blogCategoryId: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+export interface BlogPostCreationAttributes extends Optional<BlogPostAttributes, 'id' | 'viewCount' | 'createdAt' | 'updatedAt'> {}
+
+class BlogPost extends Model<BlogPostAttributes, BlogPostCreationAttributes> implements BlogPostAttributes {
+  public id!: number;
+  public title!: string;
+  public content!: string;
+  public slug!: string;
+  public metaTitle!: string;
+  public metaDescription!: string;
+  public metaKeywords!: string;
+  public author!: string;
+  public publishedAt!: Date;
+  public viewCount!: number;
+  public blogCategoryId!: number;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+BlogPost.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    title: {
+      type: new DataTypes.STRING(256),
+      allowNull: false,
+    },
+    content: {
+      type: DataTypes.TEXT,
+      allowNull: false,
+    },
+    slug: {
+      type: new DataTypes.STRING(256),
+      allowNull: false,
+      unique: true,
+    },
+    metaTitle: {
+      type: new DataTypes.STRING(256),
+      allowNull: true,
+    },
+    metaDescription: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+    },
+    metaKeywords: {
+      type: new DataTypes.STRING(256),
+      allowNull: true,
+    },
+    author: {
+      type: new DataTypes.STRING(128),
+      allowNull: false,
+    },
+    publishedAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
+    viewCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
+    blogCategoryId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    tableName: 'blog_posts',
+    sequelize,
+    timestamps: true,
+    indexes: [
+      {
+        fields: ['slug'],
+      },
+      {
+        fields: ['title'],
+      },
+      {
+        fields: ['blogCategoryId'],
+      },
+    ],
+  }
+);
+
+// BlogPost - BlogCategory
+BlogPost.belongsTo(BlogCategory, {
+  foreignKey: 'blogCategoryId',
+  as: 'category',
+});
+
+BlogCategory.hasMany(BlogPost, {
+  sourceKey: 'id',
+  foreignKey: 'blogCategoryId',
+  as: 'posts',
+});
+
+export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory }; 

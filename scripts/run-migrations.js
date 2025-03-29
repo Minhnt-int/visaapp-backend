@@ -1,41 +1,61 @@
-const { Sequelize } = require('sequelize');
-const migration = require('../migrations/remove-price-from-products');
-require('dotenv').config();
+const { execSync } = require('child_process');
+const readline = require('readline');
 
-// Cấu hình kết nối database với thông tin giống như trong lib/db.ts
-const sequelizeConfig = {
-  dialect: 'mysql',
-  host: '192.168.55.254',
-  port: 3306,
-  username: 'root',
-  password: 'admin',
-  database: 'duy',
-  logging: console.log,
-  timezone: "+07:00"
-};
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
 
-// Tạo instance Sequelize
-const sequelize = new Sequelize(sequelizeConfig);
+console.log('Chọn hành động:');
+console.log('1. Chạy các migration chưa được chạy (up)');
+console.log('2. Hoàn tác migration cuối cùng (down)');
+console.log('3. Hoàn tác tất cả migrations (down all)');
+console.log('4. Hiển thị trạng thái migrations');
+console.log('5. Thoát');
 
-// Tạo đối tượng QueryInterface
-const queryInterface = sequelize.getQueryInterface();
-
-// Chạy migration
-async function runMigration() {
+rl.question('Lựa chọn của bạn (1-5): ', (answer) => {
   try {
-    console.log('Kết nối đến database...');
-    await sequelize.authenticate();
-    console.log('Kết nối thành công!');
-
-    console.log('Running migration to remove price field from products...');
-    await migration.up(queryInterface, Sequelize);
-    console.log('Migration completed successfully!');
-    process.exit(0);
+    switch (answer) {
+      case '1':
+        console.log('Đang chạy migrations...');
+        execSync('npx sequelize-cli db:migrate', { stdio: 'inherit' });
+        console.log('Các migrations đã được chạy thành công!');
+        break;
+      
+      case '2':
+        console.log('Đang hoàn tác migration cuối cùng...');
+        execSync('npx sequelize-cli db:migrate:undo', { stdio: 'inherit' });
+        console.log('Migration cuối cùng đã được hoàn tác!');
+        break;
+      
+      case '3':
+        rl.question('Bạn có chắc chắn muốn hoàn tác TẤT CẢ migrations? Việc này sẽ xóa toàn bộ dữ liệu! (y/n): ', (confirm) => {
+          if (confirm.toLowerCase() === 'y') {
+            console.log('Đang hoàn tác tất cả migrations...');
+            execSync('npx sequelize-cli db:migrate:undo:all', { stdio: 'inherit' });
+            console.log('Tất cả migrations đã được hoàn tác!');
+          } else {
+            console.log('Đã hủy hành động!');
+          }
+          rl.close();
+        });
+        return;
+      
+      case '4':
+        console.log('Đang hiển thị trạng thái migrations...');
+        execSync('npx sequelize-cli db:migrate:status', { stdio: 'inherit' });
+        break;
+      
+      case '5':
+        console.log('Đã thoát!');
+        break;
+      
+      default:
+        console.log('Lựa chọn không hợp lệ!');
+    }
   } catch (error) {
-    console.error('Migration failed:', error);
-    process.exit(1);
+    console.error('Lỗi:', error.message);
   }
-}
-
-// Bắt đầu chạy migration
-runMigration(); 
+  
+  rl.close();
+}); 

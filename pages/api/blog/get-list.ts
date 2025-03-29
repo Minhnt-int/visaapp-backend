@@ -1,7 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import BlogPost from '../../../model/BlogPost';
-import BlogCategory from '../../../model/BlogCategory';
+import { BlogPost, BlogCategory } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler } from '../../../lib/error-handler';
 import { Op } from 'sequelize';

@@ -32,6 +32,15 @@ const ProductItemStatus = {
   DISCONTINUED: 'discontinued'
 };
 
+// Định nghĩa enum OrderStatus
+const OrderStatus = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  SHIPPED: 'shipped',
+  DELIVERED: 'delivered',
+  CANCELLED: 'cancelled'
+};
+
 // Định nghĩa các models
 // 1. Product model
 const Product = sequelize.define('Product', {
@@ -214,6 +223,111 @@ const ProductMedia = sequelize.define('ProductMedia', {
   timestamps: true,
 });
 
+// 5. BlogCategory model
+const BlogCategory = sequelize.define('BlogCategory', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'blog_categories',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['name'],
+    },
+  ],
+});
+
+// 6. BlogPost model
+const BlogPost = sequelize.define('BlogPost', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  title: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  content: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
+  slug: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+    unique: true,
+  },
+  metaTitle: {
+    type: new DataTypes.STRING(256),
+    allowNull: true,
+  },
+  metaDescription: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
+  metaKeywords: {
+    type: new DataTypes.STRING(256),
+    allowNull: true,
+  },
+  author: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+  },
+  publishedAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+  },
+  blogCategoryId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'blog_categories',
+      key: 'id',
+    },
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'blog_posts',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['slug'],
+    },
+    {
+      fields: ['title'],
+    },
+    {
+      fields: ['blogCategoryId'],
+    },
+  ],
+});
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -263,52 +377,55 @@ ProductCategory.hasMany(ProductCategory, {
   as: 'children',
 });
 
+// BlogPost - BlogCategory
+BlogPost.belongsTo(BlogCategory, {
+  foreignKey: 'blogCategoryId',
+  as: 'category',
+});
+
+BlogCategory.hasMany(BlogPost, {
+  sourceKey: 'id',
+  foreignKey: 'blogCategoryId',
+  as: 'posts',
+});
+
 // Đồng bộ hóa models với cơ sở dữ liệu
 async function syncAllModels() {
   try {
-    console.log('Kết nối đến database...');
+    // Xác thực kết nối
     await sequelize.authenticate();
-    console.log('Kết nối thành công!');
+    console.log('Kết nối database thành công.');
 
-    console.log('Xóa tất cả các bảng hiện có...');
+    console.log('Bắt đầu cập nhật cấu trúc các bảng...');
     
-    // Tắt kiểm tra khóa ngoại tạm thời
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+    // Sử dụng alter: true thay vì force: true để giữ nguyên dữ liệu
+    // và chỉ cập nhật cấu trúc bảng
     
-    // Xóa các bảng theo thứ tự ngược lại với quan hệ khóa ngoại
-    await sequelize.query('DROP TABLE IF EXISTS product_media');
-    await sequelize.query('DROP TABLE IF EXISTS product_items');
-    await sequelize.query('DROP TABLE IF EXISTS products');
-    await sequelize.query('DROP TABLE IF EXISTS product_categories');
+    console.log('1. Cập nhật ProductCategory...');
+    await ProductCategory.sync({ alter: true });
     
-    // Bật lại kiểm tra khóa ngoại
-    await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    console.log('2. Cập nhật Product...');
+    await Product.sync({ alter: true });
     
-    console.log('Đã xóa tất cả các bảng!');
-
-    console.log('Đồng bộ hóa tất cả models...');
+    console.log('3. Cập nhật ProductItem...');
+    await ProductItem.sync({ alter: true });
     
-    // Đồng bộ hóa lần lượt từng model theo thứ tự để đảm bảo quan hệ khóa ngoại
-    console.log('1. Đồng bộ hóa ProductCategory...');
-    await ProductCategory.sync({ force: true });
+    console.log('4. Cập nhật ProductMedia...');
+    await ProductMedia.sync({ alter: true });
     
-    console.log('2. Đồng bộ hóa Product...');
-    await Product.sync({ force: true });
+    console.log('5. Cập nhật BlogCategory...');
+    await BlogCategory.sync({ alter: true });
     
-    console.log('3. Đồng bộ hóa ProductItem...');
-    await ProductItem.sync({ force: true });
+    console.log('6. Cập nhật BlogPost...');
+    await BlogPost.sync({ alter: true });
     
-    console.log('4. Đồng bộ hóa ProductMedia...');
-    await ProductMedia.sync({ force: true });
-    
-    console.log('Đã đồng bộ hóa tất cả models thành công!');
-
-    process.exit(0);
+    console.log('Đã cập nhật cấu trúc tất cả các bảng thành công!');
   } catch (error) {
-    console.error('Đồng bộ hóa thất bại:', error);
-    process.exit(1);
+    console.error('Lỗi cập nhật cấu trúc bảng:', error);
+  } finally {
+    await sequelize.close();
   }
 }
 
-// Chạy đồng bộ hóa
+// Chạy hàm đồng bộ hóa
 syncAllModels(); 
