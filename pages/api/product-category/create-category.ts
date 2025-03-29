@@ -4,7 +4,7 @@ import { connectToDatabase } from '../../../lib/db';
 import { ProductCategory } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
-import slugify from 'slugify';
+import { slugify } from '../../../lib/utils';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
@@ -28,7 +28,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const startTime = Date.now();
 
   try {
-    const { name, parentId } = req.body;
+    const { name, parentId, description } = req.body;
 
     // Log input validation
     logger.debug('Validating category input', {
@@ -85,8 +85,31 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       throw new AppError(400, 'Category with this name already exists at this level', 'DUPLICATE_NAME');
     }
 
-    // Generate slug from name
-    const slug = slugify(name, { lower: true }) + "-" + Date.now();
+    // Generate initial slug from name
+    let baseSlug = slugify(name, { lower: true });
+    let slug = baseSlug;
+    let counter = 1;
+    
+    // Check for duplicate slug and generate unique one if needed
+    let slugExists = true;
+    while (slugExists) {
+      logger.debug('Checking for duplicate slug', {
+        requestId,
+        slug
+      });
+      
+      const categoryWithSlug = await ProductCategory.findOne({
+        where: { slug }
+      });
+      
+      if (!categoryWithSlug) {
+        slugExists = false;
+      } else {
+        // Append counter to slug if exists
+        slug = `${baseSlug}-${counter}`;
+        counter++;
+      }
+    }
 
     // Create new category
     logger.debug('Creating new category', {
@@ -99,6 +122,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     const newCategory = await ProductCategory.create({
       name,
       slug,
+      description,
       parentId: parentId || null,
     });
 
