@@ -87,6 +87,11 @@ const ProductCategory = sequelize.define('ProductCategory', {
     type: new DataTypes.STRING(128),
     allowNull: false,
   },
+  slug: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+    unique: true,
+  },
   description: {
     type: new DataTypes.STRING(256),
     allowNull: true,
@@ -250,6 +255,136 @@ ProductCategory.hasMany(ProductCategory, {
   as: 'children',
 });
 
+// Hàm tạo dữ liệu mẫu
+async function createSampleData() {
+  try {
+    console.log('Tạo dữ liệu mẫu...');
+
+    // 1. Tạo danh mục sản phẩm
+    const categories = await ProductCategory.bulkCreate([
+      {
+        name: 'Đồ chơi',
+        slug: 'do-choi',
+        description: 'Các loại đồ chơi cho trẻ em',
+      },
+      {
+        name: 'Sách',
+        slug: 'sach',
+        description: 'Sách truyện và sách học tập',
+      },
+      {
+        name: 'Quần áo',
+        slug: 'quan-ao',
+        description: 'Quần áo trẻ em',
+      },
+    ]);
+
+    // 2. Tạo sản phẩm
+    const products = await Product.bulkCreate([
+      {
+        name: 'Búp bê Barbie',
+        slug: 'bup-be-barbie',
+        description: 'Búp bê Barbie cao cấp',
+        categoryId: categories[0].id,
+        metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
+        metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
+        metaKeywords: 'bup be, barbie, do choi tre em',
+      },
+      {
+        name: 'Truyện cổ tích',
+        slug: 'truyen-co-tich',
+        description: 'Tuyển tập truyện cổ tích Việt Nam',
+        categoryId: categories[1].id,
+        metaTitle: 'Truyện cổ tích Việt Nam',
+        metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
+        metaKeywords: 'truyen co tich, sach tre em',
+      },
+      {
+        name: 'Áo thun nam',
+        slug: 'ao-thun-nam',
+        description: 'Áo thun nam trẻ em',
+        categoryId: categories[2].id,
+        metaTitle: 'Áo thun nam trẻ em',
+        metaDescription: 'Áo thun nam trẻ em chất lượng cao',
+        metaKeywords: 'ao thun, quan ao tre em',
+      },
+    ]);
+
+    // 3. Tạo biến thể sản phẩm
+    await ProductItem.bulkCreate([
+      {
+        productId: products[0].id,
+        name: 'Barbie Classic',
+        color: 'Hồng',
+        price: 299000,
+        originalPrice: 399000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[0].id,
+        name: 'Barbie Princess',
+        color: 'Tím',
+        price: 349000,
+        originalPrice: 449000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[1].id,
+        name: 'Truyện cổ tích - Bản đặc biệt',
+        color: 'Nhiều màu',
+        price: 199000,
+        originalPrice: 249000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[2].id,
+        name: 'Áo thun nam - Size S',
+        color: 'Xanh',
+        price: 159000,
+        originalPrice: 199000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[2].id,
+        name: 'Áo thun nam - Size M',
+        color: 'Xanh',
+        price: 159000,
+        originalPrice: 199000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+    ]);
+
+    // 4. Tạo media cho sản phẩm
+    await ProductMedia.bulkCreate([
+      {
+        productId: products[0].id,
+        type: 'image',
+        url: 'https://example.com/images/barbie-classic.jpg',
+      },
+      {
+        productId: products[0].id,
+        type: 'image',
+        url: 'https://example.com/images/barbie-princess.jpg',
+      },
+      {
+        productId: products[1].id,
+        type: 'image',
+        url: 'https://example.com/images/truyen-co-tich.jpg',
+      },
+      {
+        productId: products[2].id,
+        type: 'image',
+        url: 'https://example.com/images/ao-thun-nam.jpg',
+      },
+    ]);
+
+    console.log('Đã tạo dữ liệu mẫu thành công!');
+  } catch (error) {
+    console.error('Lỗi khi tạo dữ liệu mẫu:', error);
+    throw error;
+  }
+}
+
 // Đồng bộ hóa models với cơ sở dữ liệu
 async function syncAllModels() {
   try {
@@ -273,6 +408,10 @@ async function syncAllModels() {
     await ProductMedia.sync({ alter: true });
     
     console.log('Đã đồng bộ hóa tất cả models thành công!');
+
+    // Tạo dữ liệu mẫu sau khi đồng bộ hóa
+    await createSampleData();
+
     process.exit(0);
   } catch (error) {
     console.error('Đồng bộ hóa thất bại:', error);
