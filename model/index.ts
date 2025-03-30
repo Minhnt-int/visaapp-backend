@@ -88,6 +88,7 @@ export interface ProductAttributes {
   id: number;
   name: string;
   description?: string;
+  shortDescription?: string;
   categoryId: number;
   slug: string;
   metaTitle?: string;
@@ -104,6 +105,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public id!: number;
   public name!: string;
   public description!: string;
+  public shortDescription!: string;
   public categoryId!: number;
   public slug!: string;
   public metaTitle!: string;
@@ -126,6 +128,10 @@ Product.init(
     },
     description: {
       type: new DataTypes.STRING(256),
+      allowNull: true,
+    },
+    shortDescription: {
+      type: new DataTypes.STRING(512),
       allowNull: true,
     },
     categoryId: {
@@ -746,4 +752,64 @@ BlogCategory.hasMany(BlogPost, {
   as: 'posts',
 });
 
-export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory }; 
+// Media Model
+export interface MediaAttributes {
+  id: number;
+  name: string;
+  path: string;
+  altText?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Define interface for creation (id is optional)
+export interface MediaCreationAttributes extends Optional<MediaAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+
+class Media extends Model<MediaAttributes, MediaCreationAttributes> implements MediaAttributes {
+  public id!: number;
+  public name!: string;
+  public path!: string;
+  public altText!: string;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+Media.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    name: {
+      type: new DataTypes.STRING(255),
+      allowNull: false,
+    },
+    path: {
+      type: new DataTypes.STRING(512),
+      allowNull: false,
+    },
+    altText: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+  },
+  {
+    tableName: 'media',
+    sequelize,
+    timestamps: true,
+    underscored: true,
+  }
+);
+
+export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media }; 

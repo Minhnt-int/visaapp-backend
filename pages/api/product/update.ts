@@ -8,7 +8,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   if (req.method === 'PUT') {
     try {
-      const { id, name, price, description, categoryId, slug, metaTitle, metaDescription, metaKeywords } = req.body;
+      const { 
+        id, name, description, shortDescription, categoryId, slug, 
+        metaTitle, metaDescription, metaKeywords,
+        items, media 
+      } = req.body;
 
       // Kiểm tra xem sản phẩm có tồn tại không
       const product = await Product.findByPk(id);
@@ -25,18 +29,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       // Thiết lập múi giờ cho updatedAt
       const updatedAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
 
+      // Build update object
+      const updateFields: any = {};
+      if (name) updateFields.name = name;
+      if (description !== undefined) updateFields.description = description;
+      if (shortDescription !== undefined) updateFields.shortDescription = shortDescription;
+      if (categoryId) updateFields.categoryId = categoryId;
+      if (slug) updateFields.slug = slug;
+      if (metaTitle !== undefined) updateFields.metaTitle = metaTitle;
+      if (metaDescription !== undefined) updateFields.metaDescription = metaDescription;
+      if (metaKeywords !== undefined) updateFields.metaKeywords = metaKeywords;
+
       // Cập nhật sản phẩm
-      await product.update({
-        name,
-        price,
-        description,
-        categoryId,
-        slug,
-        metaTitle,
-        metaDescription,
-        metaKeywords,
-        updatedAt,
-      });
+      await product.update(updateFields);
 
       res.status(200).json({ message: 'Product updated successfully!', data: product });
     } catch (error) {

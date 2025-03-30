@@ -44,6 +44,21 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       throw new AppError(404, 'Category not found', 'NOT_FOUND_ERROR');
     }
 
+    // Find all subcategories
+    const allSubcategories = await ProductCategory.findAll({
+      where: { parentId: category.id }
+    });
+
+    // Get all category IDs (main category + all subcategories)
+    const categoryIds = [category.id, ...allSubcategories.map(subcat => subcat.id)];
+
+    logger.debug('Getting products for categories', {
+      requestId,
+      mainCategoryId: category.id,
+      subcategoryIds: allSubcategories.map(c => c.id),
+      totalCategories: categoryIds.length
+    });
+
     // Parse pagination parameters
     const currentPage = parseInt(page as string, 10) || 1;
     const itemsPerPage = parseInt(limit as string, 10) || 10;
@@ -51,17 +66,26 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     // Query products with items and media
     const { count, rows: products } = await Product.findAndCountAll({
-      // where: { categoryId: category.id },
+      where: {
+        categoryId: {
+          [Op.in]: categoryIds
+        }
+      },
       include: [
-        // {
-        //   model: ProductItem,
-        //   as: 'items',
-        //   required: false,
-        // },
+        {
+          model: ProductItem,
+          as: 'items',
+          required: false,
+        },
         {
           model: ProductMedia,
           as: 'media',
           required: false,
+          attributes: ['id', 'url'], // Chỉ lấy 2 trường
+          limit: 2,
+          where: {
+            type: 'image'
+          }
         },
         {
           model: ProductCategory,
@@ -85,6 +109,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       requestId,
       categoryId: category.id,
       categorySlug: category.slug,
+      subcategoryCount: allSubcategories.length,
       productsCount: count,
       page: currentPage,
       totalPages,
@@ -105,7 +130,12 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         category: {
           id: category.id,
           name: category.name,
-          slug: category.slug
+          slug: category.slug,
+          subcategories: allSubcategories.map(sc => ({
+            id: sc.id,
+            name: sc.name,
+            slug: sc.slug
+          }))
         }
       }
     });

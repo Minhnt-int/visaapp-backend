@@ -68,7 +68,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   });
 
   const { 
-    name, description, categoryId, slug, 
+    name, description, shortDescription, categoryId, slug, 
     metaTitle, metaDescription, metaKeywords, 
     items, media 
   } = req.body;
@@ -97,6 +97,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     const newProduct = await Product.create({
       name,
       description,
+      shortDescription,
       categoryId,
       slug,
       metaTitle,
