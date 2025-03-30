@@ -478,6 +478,43 @@ async function syncAllModels() {
     const syncTypeText = forceMode ? "XÓA và TẠO LẠI các bảng" : "CẬP NHẬT cấu trúc các bảng";
     
     console.log(`Bắt đầu ${syncTypeText}...`);
+
+    if (forceMode) {
+      // Tắt tạm thời kiểm tra foreign key để có thể xóa bảng
+      console.log('Tắt tạm thời kiểm tra foreign key...');
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
+      
+      // Xóa các bảng theo thứ tự (con trước, cha sau) để tránh lỗi constraint
+      console.log('Xóa các bảng hiện có...');
+      
+      console.log('1. Xóa ProductMedia...');
+      await ProductMedia.drop();
+      
+      console.log('2. Xóa ProductItem...');
+      await ProductItem.drop();
+      
+      console.log('3. Xóa BlogPost...');
+      await BlogPost.drop();
+      
+      console.log('4. Xóa Product...');
+      await Product.drop();
+      
+      console.log('5. Xóa ProductCategory...');
+      await ProductCategory.drop();
+      
+      console.log('6. Xóa BlogCategory...');
+      await BlogCategory.drop();
+      
+      console.log('7. Xóa Media...');
+      await Media.drop();
+      
+      // Bật lại kiểm tra foreign key
+      console.log('Bật lại kiểm tra foreign key...');
+      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
+    }
+    
+    // Đồng bộ hóa các model với database
+    console.log('Tạo/cập nhật các bảng...');
     
     console.log('1. Đồng bộ hóa ProductCategory...');
     await ProductCategory.sync(syncMode);
