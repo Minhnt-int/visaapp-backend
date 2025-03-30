@@ -1,6 +1,39 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
 
+// Đọc tham số từ dòng lệnh
+const args = process.argv.slice(2);
+const forceMode = args.includes('--force') || args.includes('-f');
+const helpMode = args.includes('--help') || args.includes('-h');
+
+// Hiển thị hướng dẫn sử dụng
+if (helpMode) {
+  console.log(`
+  Usage: node scripts/sync-all-models.js [OPTIONS]
+  
+  Options:
+    -f, --force    Xóa tất cả dữ liệu hiện có và tạo lại bảng từ đầu
+    -h, --help     Hiển thị hướng dẫn sử dụng này
+  
+  Không có tham số: Chỉ cập nhật cấu trúc bảng, giữ nguyên dữ liệu
+  `);
+  process.exit(0);
+}
+
+// Cảnh báo nếu sử dụng force mode
+if (forceMode) {
+  console.log('\x1b[31m%s\x1b[0m', '⚠️  CẢNH BÁO: Chế độ FORCE được kích hoạt!');
+  console.log('\x1b[31m%s\x1b[0m', '⚠️  TẤT CẢ dữ liệu hiện có sẽ bị XÓA và tạo lại bảng từ đầu!');
+  console.log('\x1b[31m%s\x1b[0m', '⚠️  Nhấn Ctrl+C trong vòng 5 giây để hủy bỏ...');
+  
+  // Đợi 5 giây để người dùng có thể hủy
+  const startTime = Date.now();
+  while (Date.now() - startTime < 5000) {
+    // Đợi 5 giây
+  }
+  console.log('\x1b[31m%s\x1b[0m', '⚠️  Đã hết thời gian chờ. Tiếp tục quá trình...');
+}
+
 // Cấu hình kết nối database
 const sequelizeConfig = {
   dialect: 'mysql',
@@ -55,6 +88,10 @@ const Product = sequelize.define('Product', {
   },
   description: {
     type: new DataTypes.STRING(256),
+    allowNull: true,
+  },
+  shortDescription: {
+    type: new DataTypes.STRING(512),
     allowNull: true,
   },
   categoryId: {
@@ -294,6 +331,11 @@ const BlogPost = sequelize.define('BlogPost', {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  viewCount: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+  },
   blogCategoryId: {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
@@ -326,6 +368,41 @@ const BlogPost = sequelize.define('BlogPost', {
       fields: ['blogCategoryId'],
     },
   ],
+});
+
+// 7. Media model (mới)
+const Media = sequelize.define('Media', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(255),
+    allowNull: false,
+  },
+  path: {
+    type: new DataTypes.STRING(512),
+    allowNull: false,
+  },
+  altText: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  }
+}, {
+  tableName: 'media',
+  timestamps: true,
+  underscored: true,
 });
 
 // Thiết lập quan hệ giữa các models
@@ -396,32 +473,40 @@ async function syncAllModels() {
     await sequelize.authenticate();
     console.log('Kết nối database thành công.');
 
-    console.log('Bắt đầu cập nhật cấu trúc các bảng...');
+    // Xác định chế độ đồng bộ (force hoặc alter)
+    const syncMode = forceMode ? { force: true } : { alter: true };
+    const syncTypeText = forceMode ? "XÓA và TẠO LẠI các bảng" : "CẬP NHẬT cấu trúc các bảng";
     
-    // Sử dụng alter: true thay vì force: true để giữ nguyên dữ liệu
-    // và chỉ cập nhật cấu trúc bảng
+    console.log(`Bắt đầu ${syncTypeText}...`);
     
-    console.log('1. Cập nhật ProductCategory...');
-    await ProductCategory.sync({ alter: true });
+    console.log('1. Đồng bộ hóa ProductCategory...');
+    await ProductCategory.sync(syncMode);
     
-    console.log('2. Cập nhật Product...');
-    await Product.sync({ alter: true });
+    console.log('2. Đồng bộ hóa Product...');
+    await Product.sync(syncMode);
     
-    console.log('3. Cập nhật ProductItem...');
-    await ProductItem.sync({ alter: true });
+    console.log('3. Đồng bộ hóa ProductItem...');
+    await ProductItem.sync(syncMode);
     
-    console.log('4. Cập nhật ProductMedia...');
-    await ProductMedia.sync({ alter: true });
+    console.log('4. Đồng bộ hóa ProductMedia...');
+    await ProductMedia.sync(syncMode);
     
-    console.log('5. Cập nhật BlogCategory...');
-    await BlogCategory.sync({ alter: true });
+    console.log('5. Đồng bộ hóa BlogCategory...');
+    await BlogCategory.sync(syncMode);
     
-    console.log('6. Cập nhật BlogPost...');
-    await BlogPost.sync({ alter: true });
+    console.log('6. Đồng bộ hóa BlogPost...');
+    await BlogPost.sync(syncMode);
     
-    console.log('Đã cập nhật cấu trúc tất cả các bảng thành công!');
+    console.log('7. Đồng bộ hóa Media...');
+    await Media.sync(syncMode);
+    
+    console.log(`Đã hoàn thành ${syncTypeText} thành công!`);
+    
+    if (forceMode) {
+      console.log('\x1b[33m%s\x1b[0m', 'Lưu ý: Tất cả dữ liệu đã bị xóa. Bạn cần chạy script seed-data.js để tạo dữ liệu mẫu.');
+    }
   } catch (error) {
-    console.error('Lỗi cập nhật cấu trúc bảng:', error);
+    console.error('Lỗi đồng bộ hóa bảng:', error);
   } finally {
     await sequelize.close();
   }
