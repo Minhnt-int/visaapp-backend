@@ -581,6 +581,7 @@ OrderItem.belongsTo(ProductItem, {
 export interface BlogCategoryAttributes {
   id: number;
   name: string;
+  slug: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -590,6 +591,7 @@ export interface BlogCategoryCreationAttributes extends Optional<BlogCategoryAtt
 class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAttributes> implements BlogCategoryAttributes {
   public id!: number;
   public name!: string;
+  public slug!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -604,6 +606,11 @@ BlogCategory.init(
     name: {
       type: new DataTypes.STRING(256),
       allowNull: false,
+    },
+    slug: {
+      type: new DataTypes.STRING(256),
+      allowNull: false,
+      unique: true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -623,6 +630,10 @@ BlogCategory.init(
     indexes: [
       {
         fields: ['name'],
+      },
+      {
+        fields: ['slug'],
+        unique: true,
       },
     ],
   }

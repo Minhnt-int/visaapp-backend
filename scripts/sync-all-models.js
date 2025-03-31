@@ -271,6 +271,11 @@ const BlogCategory = sequelize.define('BlogCategory', {
     type: new DataTypes.STRING(256),
     allowNull: false,
   },
+  slug: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+    unique: true,
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -287,6 +292,10 @@ const BlogCategory = sequelize.define('BlogCategory', {
   indexes: [
     {
       fields: ['name'],
+    },
+    {
+      fields: ['slug'],
+      unique: true,
     },
   ],
 });

@@ -1,5 +1,7 @@
 const { Sequelize, DataTypes } = require('sequelize');
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 
 // Cấu hình kết nối database
 const sequelizeConfig = {
@@ -55,6 +57,10 @@ const Product = sequelize.define('Product', {
   },
   description: {
     type: new DataTypes.STRING(256),
+    allowNull: true,
+  },
+  shortDescription: {
+    type: new DataTypes.STRING(512),
     allowNull: true,
   },
   categoryId: {
@@ -234,6 +240,11 @@ const BlogCategory = sequelize.define('BlogCategory', {
     type: new DataTypes.STRING(256),
     allowNull: false,
   },
+  slug: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+    unique: true,
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -247,6 +258,15 @@ const BlogCategory = sequelize.define('BlogCategory', {
 }, {
   tableName: 'blog_categories',
   timestamps: true,
+  indexes: [
+    {
+      fields: ['name'],
+    },
+    {
+      fields: ['slug'],
+      unique: true,
+    },
+  ],
 });
 
 // 6. BlogPost model
@@ -289,6 +309,11 @@ const BlogPost = sequelize.define('BlogPost', {
     type: DataTypes.DATE,
     allowNull: true,
   },
+  viewCount: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    defaultValue: 0,
+  },
   blogCategoryId: {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
@@ -306,6 +331,52 @@ const BlogPost = sequelize.define('BlogPost', {
 }, {
   tableName: 'blog_posts',
   timestamps: true,
+  indexes: [
+    {
+      fields: ['slug'],
+    },
+    {
+      fields: ['title'],
+    },
+    {
+      fields: ['blogCategoryId'],
+    },
+  ],
+});
+
+// 7. Media model (mới)
+const Media = sequelize.define('Media', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(255),
+    allowNull: false,
+  },
+  path: {
+    type: new DataTypes.STRING(512),
+    allowNull: false,
+  },
+  altText: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  }
+}, {
+  tableName: 'media',
+  timestamps: true,
+  underscored: true,
 });
 
 // Thiết lập quan hệ giữa các models
@@ -357,13 +428,30 @@ ProductCategory.hasMany(ProductCategory, {
   as: 'children',
 });
 
-// Define relationships here...
+// BlogPost - BlogCategory
+BlogPost.belongsTo(BlogCategory, {
+  foreignKey: 'blogCategoryId',
+  as: 'category',
+});
+
+BlogCategory.hasMany(BlogPost, {
+  sourceKey: 'id',
+  foreignKey: 'blogCategoryId',
+  as: 'posts',
+});
 
 // Hàm tạo dữ liệu mẫu
 async function seedData() {
   try {
     await sequelize.authenticate();
     console.log('Kết nối database thành công.');
+
+    // Đảm bảo thư mục uploads tồn tại
+    const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+      console.log('Đã tạo thư mục uploads');
+    }
 
     console.log('Tạo danh mục sản phẩm mẫu...');
     // 1. Tạo danh mục sản phẩm
@@ -383,6 +471,11 @@ async function seedData() {
         slug: 'quan-ao',
         description: 'Quần áo trẻ em',
       },
+      {
+        name: 'Đồ điện tử',
+        slug: 'do-dien-tu',
+        description: 'Các sản phẩm điện tử giải trí cho trẻ',
+      },
     ]);
 
     // 2. Tạo sản phẩm
@@ -391,6 +484,7 @@ async function seedData() {
         name: 'Búp bê Barbie',
         slug: 'bup-be-barbie',
         description: 'Búp bê Barbie cao cấp',
+        shortDescription: 'Búp bê Barbie phiên bản mới nhất 2024',
         categoryId: categories[0].id,
         metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
         metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
@@ -400,6 +494,7 @@ async function seedData() {
         name: 'Truyện cổ tích',
         slug: 'truyen-co-tich',
         description: 'Tuyển tập truyện cổ tích Việt Nam',
+        shortDescription: 'Bộ sưu tập các câu chuyện cổ tích Việt Nam hay nhất',
         categoryId: categories[1].id,
         metaTitle: 'Truyện cổ tích Việt Nam',
         metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
@@ -409,10 +504,21 @@ async function seedData() {
         name: 'Áo thun nam',
         slug: 'ao-thun-nam',
         description: 'Áo thun nam trẻ em',
+        shortDescription: 'Áo thun nam trẻ em chất liệu cotton thoáng mát',
         categoryId: categories[2].id,
         metaTitle: 'Áo thun nam trẻ em',
         metaDescription: 'Áo thun nam trẻ em chất lượng cao',
         metaKeywords: 'ao thun, quan ao tre em',
+      },
+      {
+        name: 'Máy chơi game cầm tay',
+        slug: 'may-choi-game-cam-tay',
+        description: 'Máy chơi game cầm tay mini với hơn 400 trò chơi',
+        shortDescription: 'Máy chơi game cầm tay phù hợp cho trẻ từ 6 tuổi trở lên',
+        categoryId: categories[3].id,
+        metaTitle: 'Máy chơi game cầm tay mini',
+        metaDescription: 'Máy chơi game cầm tay mini với hơn 400 trò chơi cổ điển',
+        metaKeywords: 'game, máy chơi game, đồ điện tử trẻ em',
       },
     ]);
 
@@ -458,6 +564,22 @@ async function seedData() {
         originalPrice: 199000,
         status: ProductItemStatus.AVAILABLE,
       },
+      {
+        productId: products[3].id,
+        name: 'Máy chơi game mini - Màu xanh',
+        color: 'Xanh',
+        price: 499000, 
+        originalPrice: 599000,
+        status: ProductItemStatus.AVAILABLE,
+      },
+      {
+        productId: products[3].id,
+        name: 'Máy chơi game mini - Màu đỏ',
+        color: 'Đỏ',
+        price: 499000,
+        originalPrice: 599000,
+        status: ProductItemStatus.AVAILABLE,
+      },
     ]);
 
     // 4. Tạo media cho sản phẩm
@@ -465,22 +587,32 @@ async function seedData() {
       {
         productId: products[0].id,
         type: 'image',
-        url: 'https://example.com/images/barbie-classic.jpg',
+        url: '/uploads/barbie-classic.jpg',
       },
       {
         productId: products[0].id,
         type: 'image',
-        url: 'https://example.com/images/barbie-princess.jpg',
+        url: '/uploads/barbie-princess.jpg',
       },
       {
         productId: products[1].id,
         type: 'image',
-        url: 'https://example.com/images/truyen-co-tich.jpg',
+        url: '/uploads/truyen-co-tich.jpg',
       },
       {
         productId: products[2].id,
         type: 'image',
-        url: 'https://example.com/images/ao-thun-nam.jpg',
+        url: '/uploads/ao-thun-nam.jpg',
+      },
+      {
+        productId: products[3].id,
+        type: 'image',
+        url: '/uploads/game-console.jpg',
+      },
+      {
+        productId: products[3].id,
+        type: 'video',
+        url: '/uploads/game-console-demo.mp4',
       },
     ]);
 
@@ -489,15 +621,19 @@ async function seedData() {
     const blogCategories = await BlogCategory.bulkCreate([
       {
         name: 'Tin tức',
+        slug: 'tin-tuc',
       },
       {
         name: 'Khuyến mãi',
+        slug: 'khuyen-mai',
       },
       {
         name: 'Hướng dẫn',
+        slug: 'huong-dan',
       },
       {
         name: 'Review sản phẩm',
+        slug: 'review-san-pham',
       }
     ]);
 
@@ -513,6 +649,7 @@ async function seedData() {
         metaKeywords: 'quà tặng, ý nghĩa, người thân, bí quyết',
         author: 'Admin',
         publishedAt: new Date(),
+        viewCount: 45,
         blogCategoryId: blogCategories[0].id
       },
       {
@@ -524,6 +661,7 @@ async function seedData() {
         metaKeywords: 'quà tặng, top 10, xu hướng, 2023',
         author: 'Admin',
         publishedAt: new Date(),
+        viewCount: 128,
         blogCategoryId: blogCategories[3].id
       },
       {
@@ -535,6 +673,7 @@ async function seedData() {
         metaKeywords: 'khuyến mãi, Tết Dương lịch, 2024, giảm giá',
         author: 'Admin',
         publishedAt: new Date(),
+        viewCount: 256,
         blogCategoryId: blogCategories[1].id
       },
       {
@@ -546,7 +685,43 @@ async function seedData() {
         metaKeywords: 'gói quà, hướng dẫn, sáng tạo, độc đáo',
         author: 'Admin',
         publishedAt: new Date(),
+        viewCount: 78,
         blogCategoryId: blogCategories[2].id
+      }
+    ]);
+
+    console.log('Tạo dữ liệu Media mẫu...');
+    // Tạo dữ liệu Media mẫu
+    await Media.bulkCreate([
+      {
+        name: 'banner-home-1.jpg',
+        path: '/uploads/banner-home-1.jpg',
+        altText: 'Banner trang chủ khuyến mãi mùa hè',
+      },
+      {
+        name: 'banner-home-2.jpg',
+        path: '/uploads/banner-home-2.jpg',
+        altText: 'Banner trang chủ sản phẩm mới',
+      },
+      {
+        name: 'logo.png',
+        path: '/uploads/logo.png',
+        altText: 'Logo website',
+      },
+      {
+        name: 'product-placeholder.jpg',
+        path: '/uploads/product-placeholder.jpg',
+        altText: 'Hình ảnh mặc định cho sản phẩm',
+      },
+      {
+        name: 'team-member-1.jpg',
+        path: '/uploads/team-member-1.jpg',
+        altText: 'Thành viên đội ngũ 1',
+      },
+      {
+        name: 'team-member-2.jpg',
+        path: '/uploads/team-member-2.jpg',
+        altText: 'Thành viên đội ngũ 2',
       }
     ]);
 
