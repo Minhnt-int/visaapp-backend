@@ -414,6 +414,55 @@ const Media = sequelize.define('Media', {
   underscored: true,
 });
 
+// 8. User model
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+  },
+  email: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+    unique: true,
+    validate: {
+      isEmail: true,
+    },
+  },
+  password: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  role: {
+    type: DataTypes.ENUM('user', 'admin'),
+    allowNull: false,
+    defaultValue: 'user',
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'users',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['email'],
+      unique: true,
+    },
+  ],
+});
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -517,6 +566,9 @@ async function syncAllModels() {
       console.log('7. Xóa Media...');
       await Media.drop();
       
+      console.log('8. Xóa User...');
+      await User.drop();
+      
       // Bật lại kiểm tra foreign key
       console.log('Bật lại kiểm tra foreign key...');
       await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
@@ -545,6 +597,9 @@ async function syncAllModels() {
     
     console.log('7. Đồng bộ hóa Media...');
     await Media.sync(syncMode);
+    
+    console.log('8. Đồng bộ hóa User...');
+    await User.sync(syncMode);
     
     console.log(`Đã hoàn thành ${syncTypeText} thành công!`);
     
