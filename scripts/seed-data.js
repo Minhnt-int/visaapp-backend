@@ -1,7 +1,25 @@
 const { Sequelize, DataTypes } = require('sequelize');
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+
+// Đọc tham số từ dòng lệnh
+const args = process.argv.slice(2);
+const helpMode = args.includes('--help') || args.includes('-h');
+
+// Hiển thị hướng dẫn sử dụng
+if (helpMode) {
+  console.log(`
+  Usage: node scripts/seed-data.js [OPTIONS]
+  
+  Options:
+    -h, --help     Hiển thị hướng dẫn sử dụng này
+  
+  Chạy script này để tạo dữ liệu mẫu cho tất cả các bảng trong database.
+  `);
+  process.exit(0);
+}
 
 // Cấu hình kết nối database
 const sequelizeConfig = {
@@ -379,6 +397,143 @@ const Media = sequelize.define('Media', {
   underscored: true,
 });
 
+// 8. Order model
+const Order = sequelize.define('Order', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id',
+    },
+  },
+  recipientName: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+  },
+  recipientPhone: {
+    type: new DataTypes.STRING(20),
+    allowNull: false,
+  },
+  recipientAddress: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM(...Object.values(OrderStatus)),
+    allowNull: false,
+    defaultValue: OrderStatus.PENDING,
+  },
+  totalAmount: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'orders',
+  timestamps: true,
+});
+
+// 9. OrderItem model
+const OrderItem = sequelize.define('OrderItem', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  orderId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'orders',
+      key: 'id',
+    },
+  },
+  productId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'products',
+      key: 'id',
+    },
+  },
+  productItemId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'product_items',
+      key: 'id',
+    },
+  },
+  quantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
+  },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  },
+  originalPrice: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  },
+  color: {
+    type: DataTypes.STRING(64),
+    allowNull: false,
+  },
+  productName: {
+    type: DataTypes.STRING(128),
+    allowNull: false,
+  },
+  itemName: {
+    type: DataTypes.STRING(128),
+    allowNull: false,
+  },
+  itemStatus: {
+    type: DataTypes.STRING(64),
+    allowNull: false,
+  },
+  subtotal: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return this.getDataValue('price') * this.getDataValue('quantity');
+    },
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'order_items',
+  timestamps: true,
+});
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -438,6 +593,42 @@ BlogCategory.hasMany(BlogPost, {
   sourceKey: 'id',
   foreignKey: 'blogCategoryId',
   as: 'posts',
+});
+
+// Order - User
+Order.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+
+User.hasMany(Order, {
+  sourceKey: 'id',
+  foreignKey: 'userId',
+  as: 'orders',
+});
+
+// Order - OrderItem
+Order.hasMany(OrderItem, {
+  sourceKey: 'id',
+  foreignKey: 'orderId',
+  as: 'items',
+});
+
+OrderItem.belongsTo(Order, {
+  foreignKey: 'orderId',
+  as: 'order',
+});
+
+// OrderItem - Product
+OrderItem.belongsTo(Product, {
+  foreignKey: 'productId',
+  as: 'product',
+});
+
+// OrderItem - ProductItem
+OrderItem.belongsTo(ProductItem, {
+  foreignKey: 'productItemId',
+  as: 'productItem',
 });
 
 // Hàm tạo dữ liệu mẫu
@@ -724,6 +915,93 @@ async function seedData() {
         altText: 'Thành viên đội ngũ 2',
       }
     ]);
+
+    console.log('- Tạo dữ liệu đơn hàng và chi tiết đơn hàng...');
+    
+    // Tạo orders
+    const orders = await Order.bulkCreate([
+      {
+        userId: users[1].id, // Test User
+        recipientName: 'Nguyễn Văn A',
+        recipientPhone: '0123456789',
+        recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
+        notes: 'Giao hàng giờ hành chính',
+        status: OrderStatus.DELIVERED,
+        totalAmount: 22990000,
+        createdAt: new Date(Date.now() - 864000000), // 10 ngày trước
+        updatedAt: new Date(Date.now() - 864000000)
+      },
+      {
+        userId: users[1].id, // Test User
+        recipientName: 'Nguyễn Văn A',
+        recipientPhone: '0123456789',
+        recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
+        notes: 'Gọi trước khi giao',
+        status: OrderStatus.PENDING,
+        totalAmount: 31990000,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        userId: null, // Khách không đăng nhập
+        recipientName: 'Trần Thị B',
+        recipientPhone: '0987654321',
+        recipientAddress: '456 Đường XYZ, Quận 2, TP HCM',
+        notes: '',
+        status: OrderStatus.PROCESSING,
+        totalAmount: 20990000,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    
+    // Tạo order items
+    await OrderItem.bulkCreate([
+      {
+        orderId: orders[0].id, // Đơn hàng đầu tiên
+        productId: products[0].id, // iPhone 13
+        productItemId: productItems[0].id, // iPhone 13 128GB Đen
+        quantity: 1,
+        price: 22990000,
+        originalPrice: 24990000,
+        color: 'Đen',
+        productName: 'iPhone 13',
+        itemName: 'iPhone 13 128GB',
+        itemStatus: ProductItemStatus.AVAILABLE,
+        createdAt: new Date(Date.now() - 864000000), // 10 ngày trước
+        updatedAt: new Date(Date.now() - 864000000)
+      },
+      {
+        orderId: orders[1].id, // Đơn hàng thứ hai
+        productId: products[2].id, // MacBook Pro
+        productItemId: productItems[3].id, // MacBook Pro M1 13"
+        quantity: 1,
+        price: 31990000,
+        originalPrice: 32990000,
+        color: 'Xám',
+        productName: 'MacBook Pro',
+        itemName: 'MacBook Pro M1 13"',
+        itemStatus: ProductItemStatus.AVAILABLE,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        orderId: orders[2].id, // Đơn hàng thứ ba
+        productId: products[1].id, // Samsung Galaxy S21
+        productItemId: productItems[2].id, // Samsung Galaxy S21 128GB
+        quantity: 1,
+        price: 20990000,
+        originalPrice: 21990000,
+        color: 'Đen',
+        productName: 'Samsung Galaxy S21',
+        itemName: 'Samsung Galaxy S21 128GB',
+        itemStatus: ProductItemStatus.AVAILABLE,
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ]);
+    
+    console.log(`- Đã tạo ${orders.length} đơn hàng và ${orders.length} chi tiết đơn hàng.`);
 
     console.log('Đã tạo dữ liệu mẫu thành công!');
   } catch (error) {

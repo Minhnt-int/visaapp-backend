@@ -463,6 +463,165 @@ const User = sequelize.define('User', {
   ],
 });
 
+// 9. Order model
+const Order = sequelize.define('Order', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  userId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'users',
+      key: 'id',
+    },
+  },
+  recipientName: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+  },
+  recipientPhone: {
+    type: new DataTypes.STRING(20),
+    allowNull: false,
+  },
+  recipientAddress: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  notes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM(...Object.values(OrderStatus)),
+    allowNull: false,
+    defaultValue: OrderStatus.PENDING,
+  },
+  totalAmount: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    defaultValue: 0,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'orders',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['userId'],
+    },
+    {
+      fields: ['status'],
+    },
+    {
+      fields: ['createdAt'],
+    },
+  ],
+});
+
+// 10. OrderItem model
+const OrderItem = sequelize.define('OrderItem', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  orderId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'orders',
+      key: 'id',
+    },
+  },
+  productId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'products',
+      key: 'id',
+    },
+  },
+  productItemId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'product_items',
+      key: 'id',
+    },
+  },
+  quantity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
+  },
+  price: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  },
+  originalPrice: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+  },
+  color: {
+    type: DataTypes.STRING(64),
+    allowNull: false,
+  },
+  productName: {
+    type: DataTypes.STRING(128),
+    allowNull: false,
+  },
+  itemName: {
+    type: DataTypes.STRING(128),
+    allowNull: false,
+  },
+  itemStatus: {
+    type: DataTypes.STRING(64),
+    allowNull: false,
+  },
+  subtotal: {
+    type: DataTypes.VIRTUAL,
+    get() {
+      return this.getDataValue('price') * this.getDataValue('quantity');
+    },
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'order_items',
+  timestamps: true,
+  indexes: [
+    {
+      fields: ['orderId'],
+    },
+    {
+      fields: ['productId'],
+    },
+    {
+      fields: ['productItemId'],
+    },
+  ],
+});
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -524,6 +683,42 @@ BlogCategory.hasMany(BlogPost, {
   as: 'posts',
 });
 
+// Order - User
+Order.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+
+User.hasMany(Order, {
+  sourceKey: 'id',
+  foreignKey: 'userId',
+  as: 'orders',
+});
+
+// Order - OrderItem
+Order.hasMany(OrderItem, {
+  sourceKey: 'id',
+  foreignKey: 'orderId',
+  as: 'items',
+});
+
+OrderItem.belongsTo(Order, {
+  foreignKey: 'orderId',
+  as: 'order',
+});
+
+// OrderItem - Product
+OrderItem.belongsTo(Product, {
+  foreignKey: 'productId',
+  as: 'product',
+});
+
+// OrderItem - ProductItem
+OrderItem.belongsTo(ProductItem, {
+  foreignKey: 'productItemId',
+  as: 'productItem',
+});
+
 // Đồng bộ hóa models với cơ sở dữ liệu
 async function syncAllModels() {
   try {
@@ -545,28 +740,34 @@ async function syncAllModels() {
       // Xóa các bảng theo thứ tự (con trước, cha sau) để tránh lỗi constraint
       console.log('Xóa các bảng hiện có...');
       
-      console.log('1. Xóa ProductMedia...');
+      console.log('1. Xóa OrderItem...');
+      await OrderItem.drop();
+      
+      console.log('2. Xóa Order...');
+      await Order.drop();
+      
+      console.log('3. Xóa ProductMedia...');
       await ProductMedia.drop();
       
-      console.log('2. Xóa ProductItem...');
+      console.log('4. Xóa ProductItem...');
       await ProductItem.drop();
       
-      console.log('3. Xóa BlogPost...');
+      console.log('5. Xóa BlogPost...');
       await BlogPost.drop();
       
-      console.log('4. Xóa Product...');
+      console.log('6. Xóa Product...');
       await Product.drop();
       
-      console.log('5. Xóa ProductCategory...');
+      console.log('7. Xóa ProductCategory...');
       await ProductCategory.drop();
       
-      console.log('6. Xóa BlogCategory...');
+      console.log('8. Xóa BlogCategory...');
       await BlogCategory.drop();
       
-      console.log('7. Xóa Media...');
+      console.log('9. Xóa Media...');
       await Media.drop();
       
-      console.log('8. Xóa User...');
+      console.log('10. Xóa User...');
       await User.drop();
       
       // Bật lại kiểm tra foreign key
@@ -600,6 +801,12 @@ async function syncAllModels() {
     
     console.log('8. Đồng bộ hóa User...');
     await User.sync(syncMode);
+    
+    console.log('9. Đồng bộ hóa Order...');
+    await Order.sync(syncMode);
+    
+    console.log('10. Đồng bộ hóa OrderItem...');
+    await OrderItem.sync(syncMode);
     
     console.log(`Đã hoàn thành ${syncTypeText} thành công!`);
     

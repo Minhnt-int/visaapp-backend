@@ -16,7 +16,7 @@ export default function SignIn() {
     if (result?.error) {
       console.error(result.error);
     } else {
-      window.location.href = '/';
+      // window.location.href = '/';
     }
   };
 

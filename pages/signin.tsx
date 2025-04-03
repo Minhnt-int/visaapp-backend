@@ -32,7 +32,7 @@ export default function SignIn() {
       console.log('Login response:', response.data);
 
       // Kiểm tra response
-      if (response.data.success) {
+      if (response.data && response.data.success) {
         // Lưu token và thông tin user vào localStorage
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
@@ -42,17 +42,32 @@ export default function SignIn() {
         alert('Đăng nhập thành công');
         
         // Chuyển hướng đến trang chủ hoặc trang được yêu cầu trước đó
-        // const returnUrl = router.query.returnUrl as string || '/';
-        // router.push(returnUrl);
+        const returnUrl = router.query.returnUrl as string || '/';
+        router.push(returnUrl);
       } else {
-        // Xử lý lỗi từ API
-        setError(response.data.message || 'Đăng nhập thất bại');
+        // Xử lý lỗi từ API khi success = false
+        setError(response.data?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
     } catch (error: any) {
       console.error('Login error:', error);
-      // Hiển thị thông báo lỗi
-      const errorMessage = error.response?.data?.message || 'Đã xảy ra lỗi khi đăng nhập';
-      setError(errorMessage);
+      
+      // Xử lý lỗi HTTP cụ thể
+      if (error.response) {
+        // Lỗi từ server với status code
+        if (error.response.status === 401) {
+          setError('Email hoặc mật khẩu không chính xác');
+        } else if (error.response.status === 404) {
+          setError('API không tồn tại. Vui lòng kiểm tra cấu hình.');
+        } else {
+          setError(error.response.data?.message || `Lỗi server: ${error.response.status}`);
+        }
+      } else if (error.request) {
+        // Không nhận được response
+        setError('Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng.');
+      } else {
+        // Lỗi khác
+        setError(`Lỗi: ${error.message}`);
+      }
     } finally {
       setLoading(false);
     }
