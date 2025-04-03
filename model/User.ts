@@ -3,18 +3,24 @@ import sequelize from '../lib/db';
 
 interface UserAttributes {
   id: number;
-  username: string;
+  name: string;
   password: string;
   email: string;
+  role: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
-interface UserCreationAttributes extends Optional<UserAttributes, 'id'> {}
+interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
 class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
   public id!: number;
-  public username!: string;
+  public name!: string;
   public password!: string;
   public email!: string;
+  public role!: string;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
 }
 
 User.init(
@@ -24,10 +30,9 @@ User.init(
       autoIncrement: true,
       primaryKey: true,
     },
-    username: {
+    name: {
       type: new DataTypes.STRING(128),
       allowNull: false,
-      unique: true,
     },
     password: {
       type: new DataTypes.STRING(128),
@@ -38,14 +43,26 @@ User.init(
       allowNull: false,
       unique: true,
     },
+    role: {
+      type: new DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'user',
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+    },
   },
   {
     tableName: 'users',
     sequelize,
     indexes: [
-      {
-        fields: ['username'],
-      },
       {
         fields: ['email'],
       },

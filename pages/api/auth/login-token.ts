@@ -2,13 +2,21 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { User } from '../../../model';
-import { withCors } from '../cors-middleware';
 
 // Thời gian hết hạn của token
 const ACCESS_TOKEN_EXPIRY = '1h'; // 1 giờ
 const REFRESH_TOKEN_EXPIRY = '7d'; // 7 ngày
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ message: 'Method not allowed' });
   }
@@ -16,75 +24,75 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     const { email, password } = req.body;
 
-    // Validate input
     if (!email || !password) {
-      return res.status(400).json({ message: 'Email and password are required' });
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Email and password are required' 
+      });
     }
 
-    // Tìm user trong database
-    const user = await User.findOne({ 
-      where: { email },
-      raw: false
-    });
+    // Tìm kiếm người dùng theo email
+    const user = await User.findOne({ where: { email } });
 
     if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      });
     }
 
-    // Lấy password từ user model
-    const userPassword = String(user.getDataValue('password'));
-    
-    // So sánh password
-    const isValidPassword = await bcrypt.compare(password, userPassword);
-    
+    // Xác thực mật khẩu
+    const isValidPassword = await bcrypt.compare(password, user.getDataValue('password'));
+
     if (!isValidPassword) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      });
     }
 
     // Tạo payload cho token
     const tokenPayload = {
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
+      id: user.getDataValue('id'),
+      email: user.getDataValue('email'),
+      name: user.getDataValue('name'),
+      role: user.getDataValue('role')
     };
 
-    // Generate access token
+    // Tạo access token
     const accessToken = jwt.sign(
       tokenPayload,
-      process.env.JWT_SECRET || 'jwt_secret',
+      process.env.JWT_SECRET || 'jwt-secret-key',
       { expiresIn: ACCESS_TOKEN_EXPIRY }
     );
 
-    // Generate refresh token
+    // Tạo refresh token
     const refreshToken = jwt.sign(
-      { id: user.id },
-      process.env.JWT_REFRESH_SECRET || 'jwt_refresh_secret',
+      tokenPayload,
+      process.env.JWT_REFRESH_SECRET || 'jwt-refresh-secret-key',
       { expiresIn: REFRESH_TOKEN_EXPIRY }
     );
 
-    // Trả về tokens
+    // Trả về thông tin người dùng (không bao gồm mật khẩu)
+    const userData = {
+      id: user.getDataValue('id'),
+      name: user.getDataValue('name'),
+      email: user.getDataValue('email'),
+      role: user.getDataValue('role')
+    };
+
     return res.status(200).json({
-      message: 'Login successful',
+      success: true,
       accessToken,
       refreshToken,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      },
+      user: userData,
       expiresIn: 3600 // 1 giờ tính bằng giây
     });
   } catch (error) {
     console.error('Login error:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    return res.status(500).json({ 
+      success: false, 
+      message: 'Internal server error' 
+    });
   }
-}
-
-// Wrap handler với CORS middleware
-export default async function apiHandler(req: NextApiRequest, res: NextApiResponse) {
-  await withCors(req, res, async () => {
-    await handler(req, res);
-  });
 } 

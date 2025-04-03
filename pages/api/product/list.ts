@@ -1,8 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductCategory, ProductMedia } from '../../../model';
-import logger from '../../../lib/logger';
-import { asyncHandler } from '../../../lib/error-handler';
+import { Product, ProductCategory, ProductItem, ProductMedia } from '../../../model';
+
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -23,6 +22,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           as: 'category',
           attributes: ['id', 'name', 'slug'],
         },
+        {
+          model: ProductItem,
+          as: 'items',
+          attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status'],
+        },
+
         {
           model: ProductMedia,
           as: 'media',
