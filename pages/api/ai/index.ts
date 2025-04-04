@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { callToAI } from './openrouter';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import logger from '../../../lib/logger';
+import { callToGenmini } from './genAi';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
-  logger.info('Processing DeepSeek AI request', {
+  logger.info('Processing AI request', {
     requestId,
     method: req.method,
     url: req.url,
@@ -13,7 +13,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   });
 
   if (req.method !== 'POST') {
-    logger.warn('Invalid method for DeepSeek AI', {
+    logger.warn('Invalid method for AI', {
       requestId,
       method: req.method
     });
@@ -31,28 +31,28 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       throw new AppError(400, 'Content is required and must be a string', 'VALIDATION_ERROR');
     }
 
-    logger.debug('Calling DeepSeek AI', {
+    logger.debug('Calling AI', {
       requestId,
       contentLength: content.length
     });
 
-    const result = await callToAI(content);
+    const result = await callToGenmini(content);
 
-    logger.info('DeepSeek AI response received', {
+    logger.info('AI response received', {
       requestId,
     //   responseLength: result?.length || 0,
       processingTime: Date.now() - startTime
     });
 
     res.status(200).json({
-      message: 'DeepSeek AI response generated successfully',
+      message: 'AI response generated successfully',
       data: {
         result
       }
     });
 
   } catch (error) {
-    logger.error('Error calling DeepSeek AI', {
+    logger.error('Error calling AI', {
       requestId,
       error: error instanceof Error ? error.message : 'Unknown error',
       stack: error instanceof Error ? error.stack : undefined,
