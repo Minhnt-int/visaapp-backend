@@ -19,24 +19,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         updatedFields: { name, parentId, slug, description } 
       });
 
-      // Tìm danh mục sản phẩm theo ID
-      const category = await ProductCategory.findByPk(id, { transaction });
-      if (!category) {
-        logger.warn('Category not found during update attempt', { categoryId: id });
-        await transaction.rollback();
-        return res.status(404).json({ message: 'Category not found' });
-      }
+      // // Tìm danh mục sản phẩm theo ID
+      // const category = await ProductCategory.findByPk(id, { transaction });
+      // if (!category) {
+      //   logger.warn('Category not found during update attempt', { categoryId: id });
+      //   await transaction.rollback();
+      //   return res.status(404).json({ message: 'Category not found' });
+      // }
 
-      // Log original values for debugging
-      logger.debug('Found category to update', { 
-        categoryId: id,
-        originalValues: {
-          name: category.name,
-          parentId: category.parentId,
-          slug: category.slug,
-          description: category.description
-        }
-      });
+      // // Log original values for debugging
+      // logger.debug('Found category to update', { 
+      //   categoryId: id,
+      //   originalValues: {
+      //     name: category.name,
+      //     parentId: category.parentId,
+      //     slug: category.slug,
+      //     description: category.description
+      //   }
+      // });
 
       // Xây dựng câu lệnh SQL để cập nhật trực tiếp
       const updateValues = [];
