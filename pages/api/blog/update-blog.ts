@@ -4,6 +4,8 @@ import { BlogPost, BlogCategory } from '../../../model';
 import moment from 'moment-timezone';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
+import sequelize from '../../../lib/db';
+import { QueryTypes } from 'sequelize';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
@@ -25,6 +27,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
   await connectToDatabase();
   const startTime = Date.now();
+  const transaction = await sequelize.transaction();
 
   try {
     const { 
@@ -44,6 +47,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     if (!id) {
       logger.warn('Missing blog ID for update', { requestId });
+      await transaction.rollback();
       throw new AppError(400, 'Blog ID is required', 'VALIDATION_ERROR');
     }
 
@@ -53,12 +57,13 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       blogId: id
     });
 
-    const blogPost = await BlogPost.findByPk(id);
+    const blogPost = await BlogPost.findByPk(id, { transaction });
     if (!blogPost) {
       logger.warn('Blog post not found', {
         requestId,
         blogId: id
       });
+      await transaction.rollback();
       throw new AppError(404, 'Blog post not found', 'NOT_FOUND_ERROR');
     }
 
@@ -69,12 +74,13 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         categoryId: blogCategoryId
       });
 
-      const category = await BlogCategory.findByPk(blogCategoryId);
+      const category = await BlogCategory.findByPk(blogCategoryId, { transaction });
       if (!category) {
         logger.warn('Blog category not found', {
           requestId,
           categoryId: blogCategoryId
         });
+        await transaction.rollback();
         throw new AppError(400, 'Blog category not found', 'CATEGORY_NOT_FOUND');
       }
     }
@@ -87,83 +93,134 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         newSlug: slug
       });
 
-      const existingPost = await BlogPost.findOne({ where: { slug } });
+      const existingPost = await BlogPost.findOne({ 
+        where: { slug },
+        transaction
+      });
+      
       if (existingPost && existingPost.id !== blogPost.id) {
         logger.warn('Duplicate slug found', {
           requestId,
           slug
         });
+        await transaction.rollback();
         throw new AppError(400, 'Slug already exists', 'DUPLICATE_SLUG');
       }
     }
 
+    // Xây dựng câu lệnh SQL để cập nhật trực tiếp
+    const updateValues = [];
+    const queryParams = [];
+    
     // Track changes for logging
     const changes: Record<string, { old: any; new: any }> = {};
 
-    // Update blog post fields with type-safe assignments
     if (title !== undefined) {
       changes.title = { old: blogPost.title, new: title };
-      blogPost.title = title;
+      updateValues.push('title = ?');
+      queryParams.push(title);
     }
+    
     if (content !== undefined) {
       changes.content = { old: blogPost.content, new: content };
-      blogPost.content = content;
+      updateValues.push('content = ?');
+      queryParams.push(content);
     }
+    
     if (slug !== undefined) {
       changes.slug = { old: blogPost.slug, new: slug };
-      blogPost.slug = slug;
+      updateValues.push('slug = ?');
+      queryParams.push(slug);
     }
+    
     if (metaTitle !== undefined) {
       changes.metaTitle = { old: blogPost.metaTitle, new: metaTitle };
-      blogPost.metaTitle = metaTitle;
+      updateValues.push('metaTitle = ?');
+      queryParams.push(metaTitle);
     }
+    
     if (metaDescription !== undefined) {
       changes.metaDescription = { old: blogPost.metaDescription, new: metaDescription };
-      blogPost.metaDescription = metaDescription;
+      updateValues.push('metaDescription = ?');
+      queryParams.push(metaDescription);
     }
+    
     if (metaKeywords !== undefined) {
       changes.metaKeywords = { old: blogPost.metaKeywords, new: metaKeywords };
-      blogPost.metaKeywords = metaKeywords;
+      updateValues.push('metaKeywords = ?');
+      queryParams.push(metaKeywords);
     }
+    
     if (author !== undefined) {
       changes.author = { old: blogPost.author, new: author };
-      blogPost.author = author;
+      updateValues.push('author = ?');
+      queryParams.push(author);
     }
+    
     if (blogCategoryId !== undefined) {
       changes.blogCategoryId = { old: blogPost.blogCategoryId, new: blogCategoryId };
-      blogPost.blogCategoryId = blogCategoryId;
+      updateValues.push('blogCategoryId = ?');
+      queryParams.push(blogCategoryId);
     }
+    
     if (publishedAt !== undefined) {
       const newPublishedAt = moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate();
       changes.publishedAt = { old: blogPost.publishedAt, new: newPublishedAt };
-      blogPost.publishedAt = newPublishedAt;
+      updateValues.push('publishedAt = ?');
+      queryParams.push(newPublishedAt);
     }
 
-    // Don't set updatedAt manually, Sequelize will handle it
+    // Thêm updated_at cho câu query
+    updateValues.push('updatedAt = NOW()');
     
-    logger.debug('Updating blog post', {
-      requestId,
-      blogId: id,
+    // Nếu không có trường nào được cập nhật, không cần thực hiện query
+    if (updateValues.length === 1) { // Chỉ có updatedAt
+      logger.warn('No fields to update provided', { blogId: id });
+      await transaction.rollback();
+      throw new AppError(400, 'No update fields provided', 'VALIDATION_ERROR');
+    }
+    
+    // Thêm điều kiện where
+    queryParams.push(id);
+    
+    // Thực hiện câu lệnh SQL trực tiếp
+    const updateQuery = `UPDATE blog_posts SET ${updateValues.join(', ')} WHERE id = ?`;
+    logger.debug('Executing direct SQL update', { 
+      query: updateQuery, 
+      params: queryParams,
       changes
     });
+    
+    await sequelize.query(updateQuery, {
+      replacements: queryParams,
+      type: QueryTypes.UPDATE,
+      transaction
+    });
 
-    await blogPost.save();
+    // Commit the transaction
+    await transaction.commit();
+    
+    // Fetch the updated blog post to ensure we have the latest data
+    const updatedBlogPost = await BlogPost.findByPk(id);
 
     logger.info('Blog post updated successfully', {
       requestId,
-      blogId: blogPost.id,
-      title: blogPost.title,
-      categoryId: blogPost.blogCategoryId,
+      blogId: id,
+      title: updatedBlogPost?.title,
+      categoryId: updatedBlogPost?.blogCategoryId,
       changedFields: Object.keys(changes),
       processingTime: Date.now() - startTime
     });
 
     res.status(200).json({ 
       message: 'Blog post updated successfully!', 
-      data: {...blogPost.toJSON(), id: blogPost.id} 
+      data: updatedBlogPost
     });
 
   } catch (error) {
+    // Rollback transaction on error
+    await transaction.rollback();
+    
     logger.error('Error updating blog post', {
       requestId,
       error: error instanceof Error ? error.message : 'Unknown error',
