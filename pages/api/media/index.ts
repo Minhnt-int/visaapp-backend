@@ -37,7 +37,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   // Xử lý GET request - Lấy danh sách ảnh
   if (req.method === 'GET') {
     try {
-      const { page = '1', limit = '20', search } = req.query;
+      const { page = '1', limit = '20', search, type } = req.query;
       const currentPage = parseInt(page as string, 10);
       const itemsPerPage = parseInt(limit as string, 10);
       const offset = (currentPage - 1) * itemsPerPage;
@@ -48,16 +48,35 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
           [Op.like]: `%${search}%`
         };
       }
+      
+      // Build WHERE clause conditions
+      let whereClause = '';
+      const conditions = [];
+      const queryParams: any = { limit: itemsPerPage, offset };
+      
+      if (search) {
+        conditions.push("name LIKE :search");
+        queryParams.search = `%${search}%`;
+      }
+      
+      if (type && (type === 'image' || type === 'video')) {
+        conditions.push("type = :type");
+        queryParams.type = type;
+      }
+      
+      if (conditions.length > 0) {
+        whereClause = `WHERE ${conditions.join(' AND ')}`;
+      }
 
       // Use raw query to ensure consistent field names
       const results = await sequelize.query(
         `SELECT id, name, path, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
          FROM media 
-         ${search ? `WHERE name LIKE '%${search}%'` : ''} 
+         ${whereClause} 
          ORDER BY created_at DESC 
          LIMIT :limit OFFSET :offset`,
         {
-          replacements: { limit: itemsPerPage, offset },
+          replacements: queryParams,
           raw: true,
           nest: false,
           plain: false
@@ -66,8 +85,9 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
       // Get total count for pagination
       const countResults = await sequelize.query(
-        `SELECT COUNT(*) as count FROM media ${search ? `WHERE name LIKE '%${search}%'` : ''}`,
+        `SELECT COUNT(*) as count FROM media ${whereClause}`,
         { 
+          replacements: queryParams,
           raw: true,
           plain: true 
         }
@@ -80,7 +100,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         requestId,
         count,
         page: currentPage,
-        totalPages
+        totalPages,
+        typeFilter: type || 'all'
       });
 
       return res.status(200).json({

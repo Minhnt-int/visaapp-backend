@@ -3,8 +3,6 @@ import { connectToDatabase } from '../../../lib/db';
 import { BlogPost, BlogCategory } from '../../../model';
 import moment from 'moment-timezone';
 import formidable from 'formidable';
-import fs from 'fs';
-import path from 'path';
 import logger from '../../../lib/logger';
 import { asyncHandler } from '../../../lib/error-handler';
 
@@ -93,62 +91,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     const contentStr = typeof content === 'string' ? content : '';
 
-    // Process images in content
-    logger.debug('Processing content images', { requestId });
-    const imageUrls = contentStr.match(/src="([^"]+)"/g) || [];
-    logger.debug('Found images in content', {
-      requestId,
-      imageCount: imageUrls.length
-    });
-
-    let updatedContent = contentStr;
-    let processedImages = 0;
-
     try {
-      for (const imageUrl of imageUrls) {
-        const localPathMatch = imageUrl.match(/src="([^"]+)"/);
-        if (localPathMatch) {
-          const localPath = localPathMatch[1];
-          const fileName = path.basename(localPath);
-          const filePath = path.join(process.cwd(), localPath);
-
-          if (fs.existsSync(filePath)) {
-            logger.debug('Processing image', {
-              requestId,
-              fileName,
-              localPath
-            });
-
-            const fileData = fs.readFileSync(filePath);
-            const formData = new FormData();
-            formData.append('file', new Blob([fileData], { type: 'application/octet-stream' }), fileName);
-
-            const uploadResponse = await fetch('/api/upload', {
-              method: 'POST',
-              body: formData,
-            });
-
-            const uploadResult = await uploadResponse.json();
-            const newImageUrl = `/uploads/${uploadResult.fileName}`;
-            updatedContent = updatedContent.replace(localPath, newImageUrl);
-            processedImages++;
-
-            logger.debug('Image processed successfully', {
-              requestId,
-              fileName,
-              newUrl: newImageUrl
-            });
-          }
-        }
-      }
-
-      logger.info('Content images processed', {
-        requestId,
-        totalImages: imageUrls.length,
-        processedImages
-      });
-
-      // Create blog post
+      // Create blog post without processing images in content
       logger.debug('Creating new blog post', {
         requestId,
         title: Array.isArray(title) ? title[0] : title,
@@ -157,7 +101,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
       const newBlogPost = await BlogPost.create({
         title: Array.isArray(title) ? title[0] : title || '',
-        content: updatedContent,
+        content: contentStr, // Use content directly without modification
         slug: Array.isArray(slug) ? slug[0] : slug || '',
         metaTitle: Array.isArray(metaTitle) ? metaTitle[0] : metaTitle || '',
         metaDescription: Array.isArray(metaDescription) ? metaDescription[0] : metaDescription || '',
@@ -176,7 +120,6 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         blogId: newBlogPost.id,
         title: newBlogPost.title,
         categoryId: newBlogPost.blogCategoryId,
-        processedImages,
         processingTime: Date.now() - startTime
       });
 

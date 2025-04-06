@@ -67,10 +67,7 @@ export type CreateProductBody = {
   metaKeywords?: string;
   avatarId?: number;
   items?: any[];
-  media?: { 
-    type: 'image' | 'video'; 
-    mediaId: number;
-  }[];
+  media?: number[]; // Array of mediaId values
 };
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
@@ -158,11 +155,11 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         mediaCount: media.length 
       });
 
-      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; mediaId: number }) => {
+      const mediaPromises = media.map((mediaId: number) => {
         return ProductMedia.create({
           productId: newProduct.id,
-          type: mediaItem.type,
-          mediaId: mediaItem.mediaId
+          type: 'image', // Default to image
+          mediaId: mediaId
         });
       });
 

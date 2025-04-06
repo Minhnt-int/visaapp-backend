@@ -66,10 +66,10 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     // Build query conditions
     const where: any = {};
-    const include: any[] = [{
-      model: BlogCategory,
-      as: 'category'
-    }];
+    // const include: any[] = [{
+    //   model: BlogCategory,
+    //   as: 'category'
+    // }];
 
     if (search) {
       where.title = {
@@ -100,7 +100,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     // Execute query
     const { count, rows } = await BlogPost.findAndCountAll({
       where,
-      include,
+      // include,
       offset,
       limit: limitNumber,
       order: [[sortBy as string, sortOrder as string]]

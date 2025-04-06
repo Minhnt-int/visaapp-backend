@@ -4,6 +4,7 @@ import { Media } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 
+// Thêm media từ bên ngoài vào database
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
   logger.info('Processing external media request', {

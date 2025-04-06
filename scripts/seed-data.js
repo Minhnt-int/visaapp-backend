@@ -266,24 +266,15 @@ const ProductMedia = sequelize.define('ProductMedia', {
   productId: {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
-    references: {
-      model: 'products',
-      key: 'id',
-    },
+  },
+  mediaId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
   },
   type: {
     type: DataTypes.ENUM('image', 'video'),
     allowNull: false,
     defaultValue: 'image',
-  },
-  url: {
-    type: new DataTypes.STRING(512),
-    allowNull: false,
-  },
-  isAvatar: {
-    type: DataTypes.BOOLEAN,
-    allowNull: false,
-    defaultValue: false,
   },
   createdAt: {
     type: DataTypes.DATE,
@@ -1185,12 +1176,37 @@ async function seedData() {
     if (existingOrders.length > 0) {
       console.log('Dữ liệu đơn hàng đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho đơn hàng.');
     } else {
-      console.log('- Tạo dữ liệu đơn hàng và chi tiết đơn hàng...');
+      console.log('- Tạo dữ liệu người dùng và đơn hàng...');
+      
+      // Kiểm tra người dùng đã tồn tại
+      const existingUsers = await User.findAll();
+      if (existingUsers.length > 0) {
+        console.log('Dữ liệu người dùng đã tồn tại. Sử dụng người dùng hiện có.');
+        var users = existingUsers;
+      } else {
+        console.log('Tạo dữ liệu người dùng mẫu...');
+        // Tạo dữ liệu người dùng
+        users = await User.bulkCreate([
+          {
+            name: 'Admin',
+            email: 'admin@example.com',
+            password: await bcrypt.hash('admin123', 10),
+            role: 'admin',
+          },
+          {
+            name: 'Test User',
+            email: 'user@example.com',
+            password: await bcrypt.hash('user123', 10),
+            role: 'user',
+          },
+        ]);
+        console.log(`- Đã tạo ${users.length} người dùng.`);
+      }
       
       // Tạo orders
       const orders = await Order.bulkCreate([
         {
-          userId: users[1].id, // Test User
+          userId: users && users.length > 1 ? users[1].id : null, // Test User hoặc null
           recipientName: 'Nguyễn Văn A',
           recipientPhone: '0123456789',
           recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
@@ -1201,7 +1217,7 @@ async function seedData() {
           updatedAt: new Date(Date.now() - 864000000)
         },
         {
-          userId: users[1].id, // Test User
+          userId: users && users.length > 1 ? users[1].id : null, // Test User hoặc null
           recipientName: 'Nguyễn Văn A',
           recipientPhone: '0123456789',
           recipientAddress: '123 Đường ABC, Quận 1, TP HCM',

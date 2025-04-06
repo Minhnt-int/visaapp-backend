@@ -217,14 +217,14 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         return;
       }
       
-      // Handle categories
-      const categories = await ProductCategory.findAll({
-        where: { id: { [Op.in]: productsWithImages.map((p: any) => p.categoryId).filter(Boolean) } },
-        raw: true
-      });
+      // // Handle categories
+      // const categories = await ProductCategory.findAll({
+      //   where: { id: { [Op.in]: productsWithImages.map((p: any) => p.categoryId).filter(Boolean) } },
+      //   raw: true
+      // });
       
-      const categoryMap = new Map();
-      categories.forEach(cat => categoryMap.set(cat.id, cat));
+      // const categoryMap = new Map();
+      // categories.forEach(cat => categoryMap.set(cat.id, cat));
       
       // Prepare the final response
       const productsWithDetails = productsWithImages.map((product: any) => {
@@ -235,7 +235,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
             path: product.avatarPath,
             type: product.avatarType
           } : null,
-          category: categoryMap.get(product.categoryId) || null
+          // category: categoryMap.get(product.categoryId) || null
         };
       });
       

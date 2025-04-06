@@ -28,13 +28,14 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const startTime = Date.now();
 
   try {
-    const { name, parentId, description } = req.body;
+    const { name, parentId, description, avatarId } = req.body;
 
     // Log input validation
     logger.debug('Validating category input', {
       requestId,
       name,
-      parentId: parentId || 'root'
+      parentId: parentId || 'root',
+      avatarId: avatarId || 'none'
     });
 
     if (!name?.trim()) {
@@ -116,7 +117,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       requestId,
       name,
       slug,
-      parentId: parentId || 'root'
+      parentId: parentId || 'root',
+      avatarId: avatarId || 'none'
     });
 
     const newCategory = await ProductCategory.create({
@@ -124,6 +126,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       slug,
       description,
       parentId: parentId || null,
+      avatarId: avatarId || null,
     });
 
     logger.info('Category created successfully', {
@@ -132,6 +135,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       name: newCategory.name,
       slug: newCategory.slug,
       parentId: newCategory.parentId || 'root',
+      avatarId: newCategory.avatarId || 'none',
       processingTime: Date.now() - startTime
     });
 

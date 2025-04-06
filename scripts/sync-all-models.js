@@ -835,29 +835,31 @@ async function syncAllModels() {
     // Đồng bộ hóa các model với database
     console.log('Tạo/cập nhật các bảng...');
     
-    console.log('1. Đồng bộ hóa ProductCategory...');
-    await ProductCategory.sync(syncMode);
-    
-    console.log('2. Đồng bộ hóa Product...');
-    await Product.sync(syncMode);
-    
-    console.log('3. Đồng bộ hóa ProductItem...');
-    await ProductItem.sync(syncMode);
-    
-    console.log('4. Đồng bộ hóa ProductMedia...');
-    await ProductMedia.sync(syncMode);
-    
-    console.log('5. Đồng bộ hóa BlogCategory...');
-    await BlogCategory.sync(syncMode);
-    
-    console.log('6. Đồng bộ hóa BlogPost...');
-    await BlogPost.sync(syncMode);
-    
-    console.log('7. Đồng bộ hóa Media...');
+    // Thay đổi thứ tự tạo bảng để đảm bảo các bảng được tạo theo đúng thứ tự phụ thuộc
+    // Media phải được tạo trước vì các bảng khác tham chiếu đến nó
+    console.log('1. Đồng bộ hóa Media...');
     await Media.sync(syncMode);
     
-    console.log('8. Đồng bộ hóa User...');
+    console.log('2. Đồng bộ hóa User...');
     await User.sync(syncMode);
+    
+    console.log('3. Đồng bộ hóa ProductCategory...');
+    await ProductCategory.sync(syncMode);
+    
+    console.log('4. Đồng bộ hóa BlogCategory...');
+    await BlogCategory.sync(syncMode);
+    
+    console.log('5. Đồng bộ hóa Product...');
+    await Product.sync(syncMode);
+    
+    console.log('6. Đồng bộ hóa ProductItem...');
+    await ProductItem.sync(syncMode);
+    
+    console.log('7. Đồng bộ hóa ProductMedia...');
+    await ProductMedia.sync(syncMode);
+    
+    console.log('8. Đồng bộ hóa BlogPost...');
+    await BlogPost.sync(syncMode);
     
     console.log('9. Đồng bộ hóa Order...');
     await Order.sync(syncMode);

@@ -139,19 +139,17 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       throw new AppError(400, 'No update fields provided', 'VALIDATION_ERROR');
     }
     
-    // Thêm điều kiện where
-    updateFields.id = id;
-    
     // Thực hiện câu lệnh SQL trực tiếp
     const updateQuery = `UPDATE blog_posts SET ${Object.keys(updateFields).map(key => `${key} = ?`).join(', ')} WHERE id = ?`;
+    
     logger.debug('Executing direct SQL update', { 
       query: updateQuery, 
-      params: Object.values(updateFields),
+      params: [...Object.values(updateFields), id],
       changes
     });
     
     await sequelize.query(updateQuery, {
-      replacements: Object.values(updateFields),
+      replacements: [...Object.values(updateFields), id],
       type: QueryTypes.UPDATE,
       transaction
     });
