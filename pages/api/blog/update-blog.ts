@@ -32,7 +32,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   try {
     const { 
       id, title, content, slug, metaTitle, metaDescription, 
-      metaKeywords, author, publishedAt, blogCategoryId 
+      metaKeywords, author, publishedAt, blogCategoryId, avatarId
     } = req.body;
 
     // Log input validation
@@ -108,91 +108,50 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       }
     }
 
-    // Xây dựng câu lệnh SQL để cập nhật trực tiếp
-    const updateValues = [];
-    const queryParams = [];
-    
+    // Build update object
+    const updateFields: any = {};
+    if (title) updateFields.title = title;
+    if (content) updateFields.content = content;
+    if (slug) updateFields.slug = slug;
+    if (metaTitle !== undefined) updateFields.metaTitle = metaTitle;
+    if (metaDescription !== undefined) updateFields.metaDescription = metaDescription;
+    if (metaKeywords !== undefined) updateFields.metaKeywords = metaKeywords;
+    if (author) updateFields.author = author;
+    if (publishedAt !== undefined) updateFields.publishedAt = publishedAt ? 
+      moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate() : null;
+    if (blogCategoryId) updateFields.blogCategoryId = blogCategoryId;
+    if (avatarId !== undefined) updateFields.avatarId = avatarId;
+
     // Track changes for logging
     const changes: Record<string, { old: any; new: any }> = {};
 
-    if (title !== undefined) {
-      changes.title = { old: blogPost.title, new: title };
-      updateValues.push('title = ?');
-      queryParams.push(title);
-    }
-    
-    if (content !== undefined) {
-      changes.content = { old: blogPost.content, new: content };
-      updateValues.push('content = ?');
-      queryParams.push(content);
-    }
-    
-    if (slug !== undefined) {
-      changes.slug = { old: blogPost.slug, new: slug };
-      updateValues.push('slug = ?');
-      queryParams.push(slug);
-    }
-    
-    if (metaTitle !== undefined) {
-      changes.metaTitle = { old: blogPost.metaTitle, new: metaTitle };
-      updateValues.push('metaTitle = ?');
-      queryParams.push(metaTitle);
-    }
-    
-    if (metaDescription !== undefined) {
-      changes.metaDescription = { old: blogPost.metaDescription, new: metaDescription };
-      updateValues.push('metaDescription = ?');
-      queryParams.push(metaDescription);
-    }
-    
-    if (metaKeywords !== undefined) {
-      changes.metaKeywords = { old: blogPost.metaKeywords, new: metaKeywords };
-      updateValues.push('metaKeywords = ?');
-      queryParams.push(metaKeywords);
-    }
-    
-    if (author !== undefined) {
-      changes.author = { old: blogPost.author, new: author };
-      updateValues.push('author = ?');
-      queryParams.push(author);
-    }
-    
-    if (blogCategoryId !== undefined) {
-      changes.blogCategoryId = { old: blogPost.blogCategoryId, new: blogCategoryId };
-      updateValues.push('blogCategoryId = ?');
-      queryParams.push(blogCategoryId);
-    }
-    
-    if (publishedAt !== undefined) {
-      const newPublishedAt = moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate();
-      changes.publishedAt = { old: blogPost.publishedAt, new: newPublishedAt };
-      updateValues.push('publishedAt = ?');
-      queryParams.push(newPublishedAt);
+    for (const field in updateFields) {
+      changes[field] = { old: blogPost[field as keyof BlogPost], new: updateFields[field] };
     }
 
     // Thêm updated_at cho câu query
-    updateValues.push('updatedAt = NOW()');
+    updateFields.updatedAt = new Date();
     
     // Nếu không có trường nào được cập nhật, không cần thực hiện query
-    if (updateValues.length === 1) { // Chỉ có updatedAt
+    if (Object.keys(updateFields).length === 1) { // Chỉ có updatedAt
       logger.warn('No fields to update provided', { blogId: id });
       await transaction.rollback();
       throw new AppError(400, 'No update fields provided', 'VALIDATION_ERROR');
     }
     
     // Thêm điều kiện where
-    queryParams.push(id);
+    updateFields.id = id;
     
     // Thực hiện câu lệnh SQL trực tiếp
-    const updateQuery = `UPDATE blog_posts SET ${updateValues.join(', ')} WHERE id = ?`;
+    const updateQuery = `UPDATE blog_posts SET ${Object.keys(updateFields).map(key => `${key} = ?`).join(', ')} WHERE id = ?`;
     logger.debug('Executing direct SQL update', { 
       query: updateQuery, 
-      params: queryParams,
+      params: Object.values(updateFields),
       changes
     });
     
     await sequelize.query(updateQuery, {
-      replacements: queryParams,
+      replacements: Object.values(updateFields),
       type: QueryTypes.UPDATE,
       transaction
     });

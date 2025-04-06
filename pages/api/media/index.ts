@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
+import sequelize from '../../../lib/db';
 import { Media } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
@@ -48,13 +49,31 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         };
       }
 
-      const { count, rows: media } = await Media.findAndCountAll({
-        where,
-        limit: itemsPerPage,
-        offset,
-        order: [['createdAt', 'DESC']]
-      });
+      // Use raw query to ensure consistent field names
+      const results = await sequelize.query(
+        `SELECT id, name, path, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
+         FROM media 
+         ${search ? `WHERE name LIKE '%${search}%'` : ''} 
+         ORDER BY created_at DESC 
+         LIMIT :limit OFFSET :offset`,
+        {
+          replacements: { limit: itemsPerPage, offset },
+          raw: true,
+          nest: false,
+          plain: false
+        }
+      );
 
+      // Get total count for pagination
+      const countResults = await sequelize.query(
+        `SELECT COUNT(*) as count FROM media ${search ? `WHERE name LIKE '%${search}%'` : ''}`,
+        { 
+          raw: true,
+          plain: true 
+        }
+      );
+
+      const count = (countResults as any).count;
       const totalPages = Math.ceil(count / itemsPerPage);
 
       logger.info('Media list retrieved successfully', {
@@ -67,7 +86,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       return res.status(200).json({
         success: true,
         data: {
-          media,
+          media: results[0],
           pagination: {
             total: count,
             totalPages,
@@ -127,13 +146,32 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
               altTextValue = Array.isArray(fields.altText) ? fields.altText[0] : fields.altText;
             }
 
+            // Xác định loại media (image hoặc video) dựa vào extension hoặc field type
+            let mediaType = 'image'; // Mặc định là image
+            
+            if (fields.type) {
+              // Nếu có trường type được gửi lên
+              const typeValue = Array.isArray(fields.type) ? fields.type[0] : fields.type;
+              if (['image', 'video'].includes(typeValue)) {
+                mediaType = typeValue;
+              }
+            } else {
+              // Tự động xác định dựa trên extension
+              const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'];
+              if (videoExtensions.includes(fileExt.toLowerCase())) {
+                mediaType = 'video';
+              }
+            }
+
             console.log('Form data fields:', fields);
             console.log('Alt text value:', altTextValue);
+            console.log('Media type:', mediaType);
 
             // Lưu thông tin vào database
             const media = await Media.create({
               name: originalFilename,
               path: `/uploads/${fileName}`,
+              type: mediaType,
               altText: altTextValue,
             });
 
@@ -143,7 +181,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
               requestId,
               mediaId: media.id,
               filename: media.name,
-              path: media.path
+              path: media.path,
+              type: media.type
             });
           }
 

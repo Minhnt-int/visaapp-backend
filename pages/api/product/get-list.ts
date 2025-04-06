@@ -1,7 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
+import sequelize from '../../../lib/db';
 import { Product, ProductCategory, ProductMedia, ProductItem } from '../../../model';
-import { Op, Sequelize } from 'sequelize';
+import { Op, Sequelize, QueryTypes } from 'sequelize';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -24,6 +25,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       sortBy = 'createdAt',
       sortOrder = 'DESC'
     } = req.query;
+
+    console.log('Query params:', { name, categoryId, page, limit, minPrice, maxPrice, search, sortBy, sortOrder });
 
     // Validate pagination parameters
     const pageNumber = parseInt(page as string, 10);
@@ -53,71 +56,234 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       productWhere.categoryId = categoryId;
     }
     
+    // Add price filter functionality
     if (minPrice || maxPrice) {
-      if (minPrice) itemWhere.price = { ...itemWhere.price, [Op.gte]: parseFloat(minPrice as string) };
-      if (maxPrice) itemWhere.price = { ...itemWhere.price, [Op.lte]: parseFloat(maxPrice as string) };
+      // We need to handle price filtering in a different way since we're not including items in the main query
+      // First get product items that match the price criteria
+      const priceWhere: any = {};
+      if (minPrice) priceWhere.price = { ...priceWhere.price, [Op.gte]: parseFloat(minPrice as string) };
+      if (maxPrice) priceWhere.price = { ...priceWhere.price, [Op.lte]: parseFloat(maxPrice as string) };
+      
+      const matchingItems = await ProductItem.findAll({
+        where: priceWhere,
+        attributes: ['productId'],
+        group: ['productId']
+      });
+      
+      if (matchingItems.length > 0) {
+        // If we have products with items in the price range, filter by these product IDs
+        const productIdsInPriceRange = matchingItems.map(item => item.productId);
+        productWhere.id = { [Op.in]: productIdsInPriceRange };
+      } else {
+        // If no products in the price range, return empty result early
+        res.status(200).json({ 
+          message: 'Products fetched successfully',
+          data: [],
+          pagination: {
+            total: 0,
+            page: pageNumber,
+            limit: limitNumber,
+            offset: offset,
+            totalPages: 0,
+            hasMore: false
+          }
+        });
+        return;
+      }
     }
 
-    // Xây dựng truy vấn cơ bản
-    const queryOptions: any = {
-      where: productWhere,
-      distinct: true,
-      include: [
-        {
-          model: ProductCategory,
-          as: 'category',
-          required: true, // Cần thiết để tìm kiếm theo tên danh mục
-          where: categoryWhere
-        },
-        {
-          model: ProductMedia,
-          as: 'media',
-          required: false,
-        },
-        {
-          model: ProductItem,
-          as: 'items',
-          required: true,
-          where: itemWhere,
-        }
-      ],
-      order: [[sortBy as string, sortOrder as string]],
-      limit: limitNumber,
-      offset: offset,
-    };
+    console.log('Where conditions:', { 
+      productWhere, 
+      categoryWhere, 
+      itemWhere,
+      hasProductConditions: Object.keys(productWhere).length > 0,
+      hasCategoryConditions: Object.keys(categoryWhere).length > 0,
+      hasItemConditions: Object.keys(itemWhere).length > 0
+    });
+    
+    // Simplified approach - use a 2-step fetch process instead of complex inclusions
+    console.log('Using simplified 2-step fetch process');
 
-    // Thêm điều kiện tìm kiếm theo search nếu có
+    // Add search functionality
     if (search) {
       const searchTerm = `%${search}%`;
-      // Ghi đè where để thêm điều kiện OR
-      queryOptions.where = {
-        ...queryOptions.where,
-        [Op.or]: [
-          { name: { [Op.like]: searchTerm } },
-          // Tìm kiếm theo tên danh mục
-          Sequelize.literal(`category.name LIKE '${searchTerm.replace(/'/g, "\\'")}'`)
-        ]
-      };
+      productWhere[Op.or] = [
+        { name: { [Op.like]: searchTerm } },
+        { description: { [Op.like]: searchTerm } },
+        { shortDescription: { [Op.like]: searchTerm } }
+      ];
+      
+      // We'll also need to fetch products by category name in a separate query
+      // and combine the results
+      if (Object.keys(productWhere).length > 1) {
+        // Save the original where clause without the search condition
+        const originalWhere = { ...productWhere };
+        delete originalWhere[Op.or];
+        
+        // Find category IDs matching search term
+        const matchingCategories = await ProductCategory.findAll({
+          where: {
+            name: { [Op.like]: searchTerm }
+          },
+          attributes: ['id']
+        });
+        
+        if (matchingCategories.length > 0) {
+          const categoryIds = matchingCategories.map(c => c.id);
+          // Add these category IDs to the OR condition
+          productWhere[Op.or].push({ 
+            categoryId: { [Op.in]: categoryIds },
+            ...originalWhere 
+          });
+        }
+      }
     }
+    
+    // Build where condition string for SQL
+    let whereConditions = [];
+    if (name) {
+      whereConditions.push(`p.name LIKE '%${name}%'`);
+    }
+    if (categoryId) {
+      whereConditions.push(`p.categoryId = ${categoryId}`);
+    }
+    if (minPrice || maxPrice) {
+      // For price filtering, we need to join with product_items
+      whereConditions.push(`p.id IN (
+        SELECT DISTINCT pi.productId 
+        FROM product_items pi 
+        WHERE ${minPrice ? `pi.price >= ${minPrice}` : '1=1'} 
+        ${maxPrice ? `AND pi.price <= ${maxPrice}` : ''}
+      )`);
+    }
+    if (search) {
+      whereConditions.push(`(p.name LIKE '%${search}%' OR p.description LIKE '%${search}%')`);
+    }
+    
+    const whereClause = whereConditions.length > 0 
+      ? whereConditions.join(' AND ') 
+      : '1=1'; // Default to true if no conditions
 
-    // Tìm kiếm sản phẩm
-    const { count, rows: products } = await Product.findAndCountAll(queryOptions);
-
-    // Tính tổng số trang
-    const totalPages = Math.ceil(count / limitNumber);
-
-    res.status(200).json({ 
-      message: 'Products fetched successfully',
-      data: products,
-      pagination: {
-        total: count,
-        page: pageNumber,
+    // Use a direct database query to get products with their avatar and secondary images
+    const directQuery = `
+      SELECT 
+        p.id, 
+        p.name, 
+        p.description, 
+        p.shortDescription, 
+        p.categoryId, 
+        p.slug, 
+        p.metaTitle, 
+        p.metaDescription, 
+        p.metaKeywords,
+        p.avatarId,
+        m.path as avatarPath,
+        m.type as avatarType
+      FROM 
+        products p
+      LEFT JOIN 
+        media m ON p.avatarId = m.id
+      WHERE 
+        ${whereClause}
+      ORDER BY 
+        p.${sortBy} ${sortOrder}
+      LIMIT ${limitNumber} 
+      OFFSET ${offset}
+    `;
+    
+    try {
+      const [productsResult] = await sequelize.query(directQuery);
+      
+      console.log('Direct SQL query results type:', typeof productsResult);
+      console.log('Is array?', Array.isArray(productsResult));
+      console.log('Direct SQL query results:', JSON.stringify(productsResult, null, 2));
+      
+      // Ensure we have an array to work with
+      const productsWithImages = Array.isArray(productsResult) ? productsResult : [productsResult];
+      
+      if (productsWithImages.length === 0) {
+        res.status(200).json({ 
+          message: 'Products fetched successfully',
+          data: [],
+          pagination: {
+            total: 0,
+            page: pageNumber,
+            limit: limitNumber,
+            offset: offset,
+            totalPages: 0,
+            hasMore: false
+          }
+        });
+        return;
+      }
+      
+      // Handle categories
+      const categories = await ProductCategory.findAll({
+        where: { id: { [Op.in]: productsWithImages.map((p: any) => p.categoryId).filter(Boolean) } },
+        raw: true
+      });
+      
+      const categoryMap = new Map();
+      categories.forEach(cat => categoryMap.set(cat.id, cat));
+      
+      // Prepare the final response
+      const productsWithDetails = productsWithImages.map((product: any) => {
+        return {
+          ...product,
+          avatar: product.avatarId ? {
+            id: product.avatarId,
+            path: product.avatarPath,
+            type: product.avatarType
+          } : null,
+          category: categoryMap.get(product.categoryId) || null
+        };
+      });
+      
+      // Count total products for pagination
+      const countResult = await sequelize.query(
+        `SELECT COUNT(*) as total FROM products`,
+        { type: QueryTypes.SELECT }
+      );
+      
+      const total = countResult[0] ? (countResult[0] as any).total : productsWithDetails.length;
+      const count = Number(total);
+  
+      res.status(200).json({ 
+        message: 'Products fetched successfully',
+        data: productsWithDetails,
+        pagination: {
+          total: count,
+          page: pageNumber,
+          limit: limitNumber,
+          offset: offset,
+          totalPages: Math.ceil(count / limitNumber),
+          hasMore: pageNumber < Math.ceil(count / limitNumber)
+        }
+      });
+    } catch (error) {
+      console.error('Error with direct query:', error);
+      // Fallback to simpler approach
+      const { count, rows: products } = await Product.findAndCountAll({
+        where: productWhere,
+        order: [[sortBy as string, sortOrder as string]],
         limit: limitNumber,
         offset: offset,
-        totalPages: totalPages,
-        hasMore: pageNumber < totalPages
-      }
-    });
+        raw: true
+      });
+      
+      res.status(200).json({ 
+        message: 'Products fetched successfully (fallback)',
+        data: products,
+        pagination: {
+          total: count,
+          page: pageNumber,
+          limit: limitNumber,
+          offset: offset,
+          totalPages: Math.ceil(count / limitNumber),
+          hasMore: pageNumber < Math.ceil(count / limitNumber)
+        }
+      });
+    }
   } catch (error) {
     throw error;
   }

@@ -1,10 +1,12 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductCategory, ProductItem, ProductMedia, ProductItemStatus } from '../../../model';
+import sequelize from '../../../lib/db';
+import { Op } from 'sequelize';
+import { Product, ProductCategory, ProductItem, ProductMedia, ProductItemStatus, Media } from '../../../model';
+import logger from '../../../lib/logger';
+import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
 import { UniqueConstraintError, ValidationError } from 'sequelize';
-import { asyncHandler, AppError } from '../../../lib/error-handler';
-import logger from '../../../lib/logger';
 
 // Hàm chuyển đổi giá trị status
 const mapStatusValue = (status: string): string => {
@@ -54,6 +56,23 @@ const validateProductData = (data: any) => {
   logger.debug('Product validation successful');
 };
 
+export type CreateProductBody = {
+  name: string;
+  description?: string;
+  shortDescription?: string;
+  categoryId: number;
+  slug: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  avatarId?: number;
+  items?: any[];
+  media?: { 
+    type: 'image' | 'video'; 
+    mediaId: number;
+  }[];
+};
+
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
   if (req.method !== 'POST') {
     logger.warn('Invalid method attempt', { method: req.method, path: req.url });
@@ -69,9 +88,9 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
 
   const { 
     name, description, shortDescription, categoryId, slug, 
-    metaTitle, metaDescription, metaKeywords, 
-    items, media 
-  } = req.body;
+    metaTitle, metaDescription, metaKeywords,
+    items, media, avatarId
+  } = req.body as CreateProductBody;
 
   // Validate input data
   validateProductData(req.body);
@@ -102,7 +121,8 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       slug,
       metaTitle,
       metaDescription,
-      metaKeywords
+      metaKeywords,
+      avatarId
     });
 
     logger.debug('Product created successfully', { 
@@ -110,52 +130,39 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       name: newProduct.name
     });
 
-    // Tạo các biến thể sản phẩm (ProductItem)
-    if (items?.length > 0) {
+    // Add product items if provided
+    if (items && items.length > 0) {
       logger.debug('Processing product items', { 
         productId: newProduct.id,
         itemCount: items.length 
       });
 
-      const itemPromises = items.map((item: { 
-        name: string; 
-        color: string; 
-        price: number;
-        originalPrice?: number;
-        status?: string;
-      }) => {
-        // Chuyển đổi giá trị status từ request
-        const mappedStatus = mapStatusValue(item.status || 'available');
-        
+      const itemPromises = items.map((item: any) => {
         return ProductItem.create({
-          productId: newProduct.id,
-          name: item.name,
-          color: item.color,
-          price: item.price,
-          originalPrice: item.originalPrice || item.price,
-          status: mappedStatus
+          ...item,
+          productId: newProduct.id
         });
       });
 
-      const productItems = await Promise.all(itemPromises);
-      logger.debug('Product items created successfully', {
+      await Promise.all(itemPromises);
+      logger.debug('Items added successfully', {
         productId: newProduct.id,
-        itemCount: productItems.length
+        itemCount: items.length
       });
     }
 
     // Add media if provided
-    if (media?.length > 0) {
+    if (media && media.length > 0) {
       logger.debug('Processing product media', { 
         productId: newProduct.id,
         mediaCount: media.length 
       });
 
-      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; url: string }) => {
+      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; mediaId: number }) => {
         return ProductMedia.create({
           productId: newProduct.id,
           type: mediaItem.type,
-          url: mediaItem.url
+          mediaId: mediaItem.mediaId
         });
       });
 
@@ -170,8 +177,18 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     const productWithDetails = await Product.findByPk(newProduct.id, {
       include: [
         {
+          model: Media,
+          as: 'avatar'
+        },
+        {
           model: ProductMedia,
-          as: 'media'
+          as: 'media',
+          include: [
+            {
+              model: Media,
+              as: 'media'
+            }
+          ]
         },
         {
           model: ProductItem,

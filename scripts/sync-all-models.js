@@ -97,6 +97,18 @@ const Product = sequelize.define('Product', {
   categoryId: {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
+    references: {
+      model: 'product_categories',
+      key: 'id',
+    },
+  },
+  avatarId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'media',
+      key: 'id',
+    },
   },
   slug: {
     type: new DataTypes.STRING(128),
@@ -153,6 +165,14 @@ const ProductCategory = sequelize.define('ProductCategory', {
   parentId: {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: true,
+  },
+  avatarId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'media',
+      key: 'id',
+    },
   },
   createdAt: {
     type: DataTypes.DATE,
@@ -236,14 +256,18 @@ const ProductMedia = sequelize.define('ProductMedia', {
       key: 'id',
     },
   },
+  mediaId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'media',
+      key: 'id',
+    },
+  },
   type: {
     type: DataTypes.ENUM('image', 'video'),
     allowNull: false,
     defaultValue: 'image',
-  },
-  url: {
-    type: new DataTypes.STRING(512),
-    allowNull: false,
   },
   createdAt: {
     type: DataTypes.DATE,
@@ -275,6 +299,14 @@ const BlogCategory = sequelize.define('BlogCategory', {
     type: new DataTypes.STRING(256),
     allowNull: false,
     unique: true,
+  },
+  avatarId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'media',
+      key: 'id',
+    },
   },
   createdAt: {
     type: DataTypes.DATE,
@@ -353,6 +385,14 @@ const BlogPost = sequelize.define('BlogPost', {
       key: 'id',
     },
   },
+  avatarId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: true,
+    references: {
+      model: 'media',
+      key: 'id',
+    },
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -393,6 +433,11 @@ const Media = sequelize.define('Media', {
   path: {
     type: new DataTypes.STRING(512),
     allowNull: false,
+  },
+  type: {
+    type: DataTypes.ENUM('image', 'video'),
+    allowNull: false,
+    defaultValue: 'image',
   },
   altText: {
     type: new DataTypes.STRING(512),
@@ -717,6 +762,18 @@ OrderItem.belongsTo(Product, {
 OrderItem.belongsTo(ProductItem, {
   foreignKey: 'productItemId',
   as: 'productItem',
+});
+
+// ProductMedia - Media
+ProductMedia.belongsTo(Media, {
+  foreignKey: 'mediaId',
+  as: 'media',
+});
+
+Media.hasMany(ProductMedia, {
+  sourceKey: 'id',
+  foreignKey: 'mediaId',
+  as: 'productMedia',
 });
 
 // Đồng bộ hóa models với cơ sở dữ liệu

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductMedia, ProductItem } from '../../../model';
+import { Product, ProductMedia, ProductItem, Media } from '../../../model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
@@ -9,18 +9,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { slug } = req.query;
 
-      // Tìm sản phẩm theo slug và bao gồm thông tin media và items (tên, màu sắc, giá, giá gốc và trạng thái)
+      // Tìm sản phẩm theo slug và bao gồm thông tin media và items
       const product = await Product.findOne({
         where: { slug },
         include: [
           {
+            model: Media,
+            as: 'avatar',
+            attributes: ['id', 'path', 'type']
+          },
+          {
             model: ProductMedia,
-            as: 'media'
+            as: 'media',
+            include: [
+              {
+                model: Media,
+                as: 'media',
+                attributes: ['id', 'path', 'type', 'altText']
+              }
+            ]
           },
           {
             model: ProductItem,
             as: 'items',
-            attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status'] // Thêm trường originalPrice
+            attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status']
           }
         ]
       });

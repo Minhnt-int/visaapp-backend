@@ -1,55 +1,92 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductCategory } from '../../../model';
+import { Product, ProductCategory, Media, ProductMedia } from '../../../model';
 import moment from 'moment-timezone';
+import { asyncHandler, AppError } from '../../../lib/error-handler';
+import logger from '../../../lib/logger';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
 
-  if (req.method === 'PUT') {
-    try {
-      const { 
-        id, name, description, shortDescription, categoryId, slug, 
-        metaTitle, metaDescription, metaKeywords,
-        items, media 
-      } = req.body;
+  if (req.method !== 'PUT') {
+    res.setHeader('Allow', ['PUT']);
+    throw new AppError(405, `Method ${req.method} Not Allowed`, 'METHOD_NOT_ALLOWED');
+  }
 
-      // Kiểm tra xem sản phẩm có tồn tại không
-      const product = await Product.findByPk(id);
-      if (!product) {
-        return res.status(404).json({ message: 'Product not found' });
-      }
+  try {
+    const { 
+      id, name, description, shortDescription, categoryId, slug, 
+      metaTitle, metaDescription, metaKeywords,
+      avatarId
+    } = req.body;
 
-      // Kiểm tra xem danh mục có tồn tại không
+    logger.debug('Updating product', { id, name, categoryId, avatarId });
+
+    // Kiểm tra xem sản phẩm có tồn tại không
+    const product = await Product.findByPk(id);
+    if (!product) {
+      throw new AppError(404, 'Product not found', 'NOT_FOUND_ERROR');
+    }
+
+    // Kiểm tra xem danh mục có tồn tại không
+    if (categoryId) {
       const category = await ProductCategory.findByPk(categoryId);
       if (!category) {
-        return res.status(400).json({ message: 'Category not found' });
+        throw new AppError(400, 'Category not found', 'CATEGORY_NOT_FOUND');
       }
-
-      // Thiết lập múi giờ cho updatedAt
-      const updatedAt = moment().tz('Asia/Ho_Chi_Minh').toDate();
-
-      // Build update object
-      const updateFields: any = {};
-      if (name) updateFields.name = name;
-      if (description !== undefined) updateFields.description = description;
-      if (shortDescription !== undefined) updateFields.shortDescription = shortDescription;
-      if (categoryId) updateFields.categoryId = categoryId;
-      if (slug) updateFields.slug = slug;
-      if (metaTitle !== undefined) updateFields.metaTitle = metaTitle;
-      if (metaDescription !== undefined) updateFields.metaDescription = metaDescription;
-      if (metaKeywords !== undefined) updateFields.metaKeywords = metaKeywords;
-
-      // Cập nhật sản phẩm
-      await product.update(updateFields);
-
-      res.status(200).json({ message: 'Product updated successfully!', data: product });
-    } catch (error) {
-      console.error('Error updating product:', error);
-      res.status(500).json({ message: 'Error updating product', error: (error as any).message });
     }
-  } else {
-    res.setHeader('Allow', ['PUT']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+
+    // Kiểm tra avatar nếu có
+    if (avatarId) {
+      const avatar = await Media.findByPk(avatarId);
+      if (!avatar) {
+        throw new AppError(400, 'Avatar media not found', 'MEDIA_NOT_FOUND');
+      }
+    }
+
+    // Build update object
+    const updateFields: any = {};
+    if (name) updateFields.name = name;
+    if (description !== undefined) updateFields.description = description;
+    if (shortDescription !== undefined) updateFields.shortDescription = shortDescription;
+    if (categoryId) updateFields.categoryId = categoryId;
+    if (slug) updateFields.slug = slug;
+    if (metaTitle !== undefined) updateFields.metaTitle = metaTitle;
+    if (metaDescription !== undefined) updateFields.metaDescription = metaDescription;
+    if (metaKeywords !== undefined) updateFields.metaKeywords = metaKeywords;
+    if (avatarId !== undefined) updateFields.avatarId = avatarId;
+
+    // Cập nhật sản phẩm
+    await product.update(updateFields);
+
+    // Trả về sản phẩm với dữ liệu đã cập nhật
+    const updatedProduct = await Product.findByPk(id, {
+      include: [
+        {
+          model: Media,
+          as: 'avatar',
+          attributes: ['id', 'path', 'type']
+        },
+        {
+          model: ProductCategory,
+          as: 'category',
+          attributes: ['id', 'name', 'slug']
+        }
+      ]
+    });
+
+    logger.info('Product updated successfully', { 
+      id: product.id, 
+      name: product.name,
+      avatarId: updateFields.avatarId
+    });
+
+    res.status(200).json({ 
+      message: 'Product updated successfully!', 
+      data: updatedProduct 
+    });
+  } catch (error) {
+    logger.error('Error updating product', { error });
+    throw error;
   }
-}
+});

@@ -49,7 +49,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     const { 
       title, content, slug, metaTitle, metaDescription, 
-      metaKeywords, author, publishedAt, blogCategoryId 
+      metaKeywords, author, publishedAt, blogCategoryId, avatarId
     } = fields;
 
     // Log input validation
@@ -164,6 +164,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         metaKeywords: Array.isArray(metaKeywords) ? metaKeywords[0] : (metaKeywords || ''),
         author: Array.isArray(author) ? author[0] : (author || ''),
         blogCategoryId: Array.isArray(blogCategoryId) ? parseInt(blogCategoryId[0], 10) : (blogCategoryId ? parseInt(blogCategoryId, 10) : 0),
+        avatarId: Array.isArray(avatarId) && avatarId[0] ? Number(avatarId[0]) : 
+          (typeof avatarId === 'string' && avatarId ? Number(avatarId) : undefined),
         publishedAt: publishedAt ? moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate() : moment().tz('Asia/Ho_Chi_Minh').toDate(),
         createdAt: moment().tz('Asia/Ho_Chi_Minh').toDate(),
         updatedAt: moment().tz('Asia/Ho_Chi_Minh').toDate(),

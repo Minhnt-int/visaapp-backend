@@ -24,6 +24,7 @@ export interface ProductCategoryAttributes {
   slug: string;
   description?: string;
   parentId?: number;
+  avatarId?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -37,6 +38,7 @@ class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCr
   public slug!: string;
   public description!: string;
   public parentId!: number;
+  public avatarId!: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -65,6 +67,10 @@ ProductCategory.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
     },
+    avatarId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -90,6 +96,7 @@ export interface ProductAttributes {
   description?: string;
   shortDescription?: string;
   categoryId: number;
+  avatarId?: number;
   slug: string;
   metaTitle?: string;
   metaDescription?: string;
@@ -107,6 +114,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public description!: string;
   public shortDescription!: string;
   public categoryId!: number;
+  public avatarId!: number;
   public slug!: string;
   public metaTitle!: string;
   public metaDescription!: string;
@@ -137,6 +145,10 @@ Product.init(
     categoryId: {
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
+    },
+    avatarId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
     },
     slug: {
       type: new DataTypes.STRING(128),
@@ -256,8 +268,8 @@ ProductItem.init(
 export interface ProductMediaAttributes {
   id: number;
   productId: number;
+  mediaId: number;
   type: string;
-  url: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -268,8 +280,8 @@ export interface ProductMediaCreationAttributes extends Optional<ProductMediaAtt
 class ProductMedia extends Model<ProductMediaAttributes, ProductMediaCreationAttributes> implements ProductMediaAttributes {
   public id!: number;
   public productId!: number;
+  public mediaId!: number;
   public type!: string;
-  public url!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -285,14 +297,14 @@ ProductMedia.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
+    mediaId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: false,
+    },
     type: {
       type: DataTypes.ENUM('image', 'video'),
       allowNull: false,
       defaultValue: 'image',
-    },
-    url: {
-      type: new DataTypes.STRING(512),
-      allowNull: false,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -582,6 +594,7 @@ export interface BlogCategoryAttributes {
   id: number;
   name: string;
   slug: string;
+  avatarId?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -592,6 +605,7 @@ class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAtt
   public id!: number;
   public name!: string;
   public slug!: string;
+  public avatarId!: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -611,6 +625,10 @@ BlogCategory.init(
       type: new DataTypes.STRING(256),
       allowNull: false,
       unique: true,
+    },
+    avatarId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -652,6 +670,7 @@ export interface BlogPostAttributes {
   publishedAt?: Date;
   viewCount?: number;
   blogCategoryId: number;
+  avatarId?: number;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -670,6 +689,7 @@ class BlogPost extends Model<BlogPostAttributes, BlogPostCreationAttributes> imp
   public publishedAt!: Date;
   public viewCount!: number;
   public blogCategoryId!: number;
+  public avatarId!: number;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -722,6 +742,10 @@ BlogPost.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
+    avatarId: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      allowNull: true,
+    },
     createdAt: {
       type: DataTypes.DATE,
       allowNull: false,
@@ -768,6 +792,7 @@ export interface MediaAttributes {
   id: number;
   name: string;
   path: string;
+  type: string;
   altText?: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -780,6 +805,7 @@ class Media extends Model<MediaAttributes, MediaCreationAttributes> implements M
   public id!: number;
   public name!: string;
   public path!: string;
+  public type!: string;
   public altText!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -799,6 +825,11 @@ Media.init(
     path: {
       type: new DataTypes.STRING(512),
       allowNull: false,
+    },
+    type: {
+      type: DataTypes.ENUM('image', 'video'),
+      allowNull: false,
+      defaultValue: 'image',
     },
     altText: {
       type: new DataTypes.STRING(512),
@@ -897,5 +928,64 @@ User.init(
     ],
   }
 );
+
+// Other relationships are here
+
+// ProductMedia - Media
+ProductMedia.belongsTo(Media, {
+  foreignKey: 'mediaId',
+  as: 'media',
+});
+
+Media.hasMany(ProductMedia, {
+  sourceKey: 'id',
+  foreignKey: 'mediaId',
+  as: 'productMedia',
+});
+
+// Media Model relationships with avatarId fields
+Media.hasMany(Product, {
+  sourceKey: 'id',
+  foreignKey: 'avatarId',
+  as: 'products',
+});
+
+Product.belongsTo(Media, {
+  foreignKey: 'avatarId',
+  as: 'avatar',
+});
+
+Media.hasMany(ProductCategory, {
+  sourceKey: 'id',
+  foreignKey: 'avatarId',
+  as: 'productCategories',
+});
+
+ProductCategory.belongsTo(Media, {
+  foreignKey: 'avatarId',
+  as: 'avatar',
+});
+
+Media.hasMany(BlogCategory, {
+  sourceKey: 'id',
+  foreignKey: 'avatarId',
+  as: 'blogCategories',
+});
+
+BlogCategory.belongsTo(Media, {
+  foreignKey: 'avatarId',
+  as: 'avatar',
+});
+
+Media.hasMany(BlogPost, {
+  sourceKey: 'id',
+  foreignKey: 'avatarId',
+  as: 'blogPosts',
+});
+
+BlogPost.belongsTo(Media, {
+  foreignKey: 'avatarId',
+  as: 'avatar',
+});
 
 export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media }; 
