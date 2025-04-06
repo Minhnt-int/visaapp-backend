@@ -684,382 +684,441 @@ async function seedData() {
       console.log('Đã tạo thư mục uploads');
     }
 
-    console.log('Tạo danh mục sản phẩm mẫu...');
-    // 1. Tạo danh mục sản phẩm
-    const categories = await ProductCategory.bulkCreate([
-      {
-        name: 'Đồ chơi',
-        slug: 'do-choi',
-        description: 'Các loại đồ chơi cho trẻ em',
-      },
-      {
-        name: 'Sách',
-        slug: 'sach',
-        description: 'Sách truyện và sách học tập',
-      },
-      {
-        name: 'Quần áo',
-        slug: 'quan-ao',
-        description: 'Quần áo trẻ em',
-      },
-      {
-        name: 'Đồ điện tử',
-        slug: 'do-dien-tu',
-        description: 'Các sản phẩm điện tử giải trí cho trẻ',
-      },
-    ]);
+    // Kiểm tra dữ liệu đã tồn tại trước khi tạo mới
+    const existingCategories = await ProductCategory.findAll();
+    if (existingCategories.length > 0) {
+      console.log('Dữ liệu danh mục sản phẩm đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho danh mục.');
+      var categories = existingCategories;
+    } else {
+      console.log('Tạo danh mục sản phẩm mẫu...');
+      // 1. Tạo danh mục sản phẩm
+      categories = await ProductCategory.bulkCreate([
+        {
+          name: 'Đồ chơi',
+          slug: 'do-choi',
+          description: 'Các loại đồ chơi cho trẻ em',
+        },
+        {
+          name: 'Sách',
+          slug: 'sach',
+          description: 'Sách truyện và sách học tập',
+        },
+        {
+          name: 'Quần áo',
+          slug: 'quan-ao',
+          description: 'Quần áo trẻ em',
+        },
+        {
+          name: 'Đồ điện tử',
+          slug: 'do-dien-tu',
+          description: 'Các sản phẩm điện tử giải trí cho trẻ',
+        },
+      ]);
+    }
 
-    // 2. Tạo sản phẩm
-    const products = await Product.bulkCreate([
-      {
-        name: 'Búp bê Barbie',
-        slug: 'bup-be-barbie',
-        description: 'Búp bê Barbie cao cấp',
-        shortDescription: 'Búp bê Barbie phiên bản mới nhất 2024',
-        categoryId: categories[0].id,
-        metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
-        metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
-        metaKeywords: 'bup be, barbie, do choi tre em',
-      },
-      {
-        name: 'Truyện cổ tích',
-        slug: 'truyen-co-tich',
-        description: 'Tuyển tập truyện cổ tích Việt Nam',
-        shortDescription: 'Bộ sưu tập các câu chuyện cổ tích Việt Nam hay nhất',
-        categoryId: categories[1].id,
-        metaTitle: 'Truyện cổ tích Việt Nam',
-        metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
-        metaKeywords: 'truyen co tich, sach tre em',
-      },
-      {
-        name: 'Áo thun nam',
-        slug: 'ao-thun-nam',
-        description: 'Áo thun nam trẻ em',
-        shortDescription: 'Áo thun nam trẻ em chất liệu cotton thoáng mát',
-        categoryId: categories[2].id,
-        metaTitle: 'Áo thun nam trẻ em',
-        metaDescription: 'Áo thun nam trẻ em chất lượng cao',
-        metaKeywords: 'ao thun, quan ao tre em',
-      },
-      {
-        name: 'Máy chơi game cầm tay',
-        slug: 'may-choi-game-cam-tay',
-        description: 'Máy chơi game cầm tay mini với hơn 400 trò chơi',
-        shortDescription: 'Máy chơi game cầm tay phù hợp cho trẻ từ 6 tuổi trở lên',
-        categoryId: categories[3].id,
-        metaTitle: 'Máy chơi game cầm tay mini',
-        metaDescription: 'Máy chơi game cầm tay mini với hơn 400 trò chơi cổ điển',
-        metaKeywords: 'game, máy chơi game, đồ điện tử trẻ em',
-      },
-    ]);
+    // Kiểm tra sản phẩm đã tồn tại
+    const existingProducts = await Product.findAll();
+    if (existingProducts.length > 0) {
+      console.log('Dữ liệu sản phẩm đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho sản phẩm.');
+      var products = existingProducts;
+    } else {
+      // 2. Tạo sản phẩm
+      products = await Product.bulkCreate([
+        {
+          name: 'Búp bê Barbie',
+          slug: 'bup-be-barbie',
+          description: 'Búp bê Barbie cao cấp',
+          shortDescription: 'Búp bê Barbie phiên bản mới nhất 2024',
+          categoryId: categories[0].id,
+          metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
+          metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
+          metaKeywords: 'bup be, barbie, do choi tre em',
+        },
+        {
+          name: 'Truyện cổ tích',
+          slug: 'truyen-co-tich',
+          description: 'Tuyển tập truyện cổ tích Việt Nam',
+          shortDescription: 'Bộ sưu tập các câu chuyện cổ tích Việt Nam hay nhất',
+          categoryId: categories[1].id,
+          metaTitle: 'Truyện cổ tích Việt Nam',
+          metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
+          metaKeywords: 'truyen co tich, sach tre em',
+        },
+        {
+          name: 'Áo thun nam',
+          slug: 'ao-thun-nam',
+          description: 'Áo thun nam trẻ em',
+          shortDescription: 'Áo thun nam trẻ em chất liệu cotton thoáng mát',
+          categoryId: categories[2].id,
+          metaTitle: 'Áo thun nam trẻ em',
+          metaDescription: 'Áo thun nam trẻ em chất lượng cao',
+          metaKeywords: 'ao thun, quan ao tre em',
+        },
+        {
+          name: 'Máy chơi game cầm tay',
+          slug: 'may-choi-game-cam-tay',
+          description: 'Máy chơi game cầm tay mini với hơn 400 trò chơi',
+          shortDescription: 'Máy chơi game cầm tay phù hợp cho trẻ từ 6 tuổi trở lên',
+          categoryId: categories[3].id,
+          metaTitle: 'Máy chơi game cầm tay mini',
+          metaDescription: 'Máy chơi game cầm tay mini với hơn 400 trò chơi cổ điển',
+          metaKeywords: 'game, máy chơi game, đồ điện tử trẻ em',
+        },
+      ]);
+    }
 
-    // 3. Tạo biến thể sản phẩm
-    await ProductItem.bulkCreate([
-      {
-        productId: products[0].id,
-        name: 'Barbie Classic',
-        color: 'Hồng',
-        price: 299000,
-        originalPrice: 399000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-      {
-        productId: products[0].id,
-        name: 'Barbie Princess',
-        color: 'Tím',
-        price: 349000,
-        originalPrice: 449000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-      {
-        productId: products[1].id,
-        name: 'Truyện cổ tích - Bản đặc biệt',
-        color: 'Nhiều màu',
-        price: 199000,
-        originalPrice: 249000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-      {
-        productId: products[2].id,
-        name: 'Áo thun nam - Size S',
-        color: 'Xanh',
-        price: 159000,
-        originalPrice: 199000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-      {
-        productId: products[2].id,
-        name: 'Áo thun nam - Size M',
-        color: 'Xanh',
-        price: 159000,
-        originalPrice: 199000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-      {
-        productId: products[3].id,
-        name: 'Máy chơi game mini - Màu xanh',
-        color: 'Xanh',
-        price: 499000, 
-        originalPrice: 599000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-      {
-        productId: products[3].id,
-        name: 'Máy chơi game mini - Màu đỏ',
-        color: 'Đỏ',
-        price: 499000,
-        originalPrice: 599000,
-        status: ProductItemStatus.AVAILABLE,
-      },
-    ]);
+    // Kiểm tra biến thể sản phẩm đã tồn tại
+    const existingProductItems = await ProductItem.findAll();
+    if (existingProductItems.length > 0) {
+      console.log('Dữ liệu biến thể sản phẩm đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho biến thể sản phẩm.');
+      var productItems = existingProductItems;
+    } else {
+      // 3. Tạo biến thể sản phẩm
+      productItems = await ProductItem.bulkCreate([
+        {
+          productId: products[0].id,
+          name: 'Barbie Classic',
+          color: 'Hồng',
+          price: 299000,
+          originalPrice: 399000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+        {
+          productId: products[0].id,
+          name: 'Barbie Princess',
+          color: 'Tím',
+          price: 349000,
+          originalPrice: 449000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+        {
+          productId: products[1].id,
+          name: 'Truyện cổ tích - Bản đặc biệt',
+          color: 'Nhiều màu',
+          price: 199000,
+          originalPrice: 249000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+        {
+          productId: products[2].id,
+          name: 'Áo thun nam - Size S',
+          color: 'Xanh',
+          price: 159000,
+          originalPrice: 199000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+        {
+          productId: products[2].id,
+          name: 'Áo thun nam - Size M',
+          color: 'Xanh',
+          price: 159000,
+          originalPrice: 199000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+        {
+          productId: products[3].id,
+          name: 'Máy chơi game mini - Màu xanh',
+          color: 'Xanh',
+          price: 499000, 
+          originalPrice: 599000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+        {
+          productId: products[3].id,
+          name: 'Máy chơi game mini - Màu đỏ',
+          color: 'Đỏ',
+          price: 499000,
+          originalPrice: 599000,
+          status: ProductItemStatus.AVAILABLE,
+        },
+      ]);
+    }
 
-    // 4. Tạo media cho sản phẩm
-    await ProductMedia.bulkCreate([
-      {
-        productId: products[0].id,
-        type: 'image',
-        url: '/uploads/barbie-classic.jpg',
-      },
-      {
-        productId: products[0].id,
-        type: 'image',
-        url: '/uploads/barbie-princess.jpg',
-      },
-      {
-        productId: products[1].id,
-        type: 'image',
-        url: '/uploads/truyen-co-tich.jpg',
-      },
-      {
-        productId: products[2].id,
-        type: 'image',
-        url: '/uploads/ao-thun-nam.jpg',
-      },
-      {
-        productId: products[3].id,
-        type: 'image',
-        url: '/uploads/game-console.jpg',
-      },
-      {
-        productId: products[3].id,
-        type: 'video',
-        url: '/uploads/game-console-demo.mp4',
-      },
-    ]);
+    // Kiểm tra media sản phẩm đã tồn tại
+    const existingProductMedia = await ProductMedia.findAll();
+    if (existingProductMedia.length > 0) {
+      console.log('Dữ liệu media sản phẩm đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho media sản phẩm.');
+    } else {
+      // 4. Tạo media cho sản phẩm
+      await ProductMedia.bulkCreate([
+        {
+          productId: products[0].id,
+          type: 'image',
+          url: '/uploads/barbie-classic.jpg',
+        },
+        {
+          productId: products[0].id,
+          type: 'image',
+          url: '/uploads/barbie-princess.jpg',
+        },
+        {
+          productId: products[1].id,
+          type: 'image',
+          url: '/uploads/truyen-co-tich.jpg',
+        },
+        {
+          productId: products[2].id,
+          type: 'image',
+          url: '/uploads/ao-thun-nam.jpg',
+        },
+        {
+          productId: products[3].id,
+          type: 'image',
+          url: '/uploads/game-console.jpg',
+        },
+        {
+          productId: products[3].id,
+          type: 'video',
+          url: '/uploads/game-console-demo.mp4',
+        },
+      ]);
+    }
 
-    console.log('Tạo dữ liệu người dùng mẫu...');
-    // Tạo dữ liệu người dùng
-    const users = await User.bulkCreate([
-      {
-        name: 'Admin',
-        email: 'admin@example.com',
-        password: await bcrypt.hash('admin123', 10),
-        role: 'admin',
-      },
-      {
-        name: 'Test User',
-        email: 'user@example.com',
-        password: await bcrypt.hash('user123', 10),
-        role: 'user',
-      },
-    ]);
-    console.log(`- Đã tạo ${users.length} người dùng.`);
+    // Kiểm tra người dùng đã tồn tại
+    const existingUsers = await User.findAll();
+    if (existingUsers.length > 0) {
+      console.log('Dữ liệu người dùng đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho người dùng.');
+      var users = existingUsers;
+    } else {
+      console.log('Tạo dữ liệu người dùng mẫu...');
+      // Tạo dữ liệu người dùng
+      users = await User.bulkCreate([
+        {
+          name: 'Admin',
+          email: 'admin@example.com',
+          password: await bcrypt.hash('admin123', 10),
+          role: 'admin',
+        },
+        {
+          name: 'Test User',
+          email: 'user@example.com',
+          password: await bcrypt.hash('user123', 10),
+          role: 'user',
+        },
+      ]);
+      console.log(`- Đã tạo ${users.length} người dùng.`);
+    }
 
-    console.log('Tạo danh mục blog mẫu...');
-    // Tạo danh mục blog mẫu
-    const blogCategories = await BlogCategory.bulkCreate([
-      {
-        name: 'Tin tức',
-        slug: 'tin-tuc',
-      },
-      {
-        name: 'Khuyến mãi',
-        slug: 'khuyen-mai',
-      },
-      {
-        name: 'Hướng dẫn',
-        slug: 'huong-dan',
-      },
-      {
-        name: 'Review sản phẩm',
-        slug: 'review-san-pham',
-      }
-    ]);
+    // Kiểm tra danh mục blog đã tồn tại
+    const existingBlogCategories = await BlogCategory.findAll();
+    if (existingBlogCategories.length > 0) {
+      console.log('Dữ liệu danh mục blog đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho danh mục blog.');
+      var blogCategories = existingBlogCategories;
+    } else {
+      console.log('Tạo danh mục blog mẫu...');
+      // Tạo danh mục blog mẫu
+      blogCategories = await BlogCategory.bulkCreate([
+        {
+          name: 'Tin tức',
+          slug: 'tin-tuc',
+        },
+        {
+          name: 'Khuyến mãi',
+          slug: 'khuyen-mai',
+        },
+        {
+          name: 'Hướng dẫn',
+          slug: 'huong-dan',
+        },
+        {
+          name: 'Review sản phẩm',
+          slug: 'review-san-pham',
+        }
+      ]);
+    }
 
-    console.log('Tạo bài viết blog mẫu...');
-    // Tạo bài viết blog mẫu
-    await BlogPost.bulkCreate([
-      {
-        title: 'Bật mí cách chọn quà tặng ý nghĩa cho người thân',
-        content: '<p>Bài viết này sẽ giúp bạn hiểu cách chọn quà tặng ý nghĩa cho người thân yêu...</p><p>Khi chọn quà, bạn nên quan tâm đến sở thích của người nhận...</p>',
-        slug: 'bat-mi-cach-chon-qua-tang-y-nghia',
-        metaTitle: 'Cách chọn quà tặng ý nghĩa cho người thân',
-        metaDescription: 'Bài viết chia sẻ những bí quyết chọn quà tặng ý nghĩa cho người thân yêu dịp đặc biệt',
-        metaKeywords: 'quà tặng, ý nghĩa, người thân, bí quyết',
-        author: 'Admin',
-        publishedAt: new Date(),
-        viewCount: 45,
-        blogCategoryId: blogCategories[0].id
-      },
-      {
-        title: 'Top 10 món quà được yêu thích nhất năm 2023',
-        content: '<p>Năm 2023 đã chứng kiến nhiều xu hướng quà tặng mới...</p><p>Dưới đây là top 10 món quà được yêu thích nhất...</p>',
-        slug: 'top-10-mon-qua-duoc-yeu-thich-nhat-nam-2023',
-        metaTitle: 'Top 10 món quà được yêu thích nhất năm 2023',
-        metaDescription: 'Khám phá những món quà tặng được yêu thích nhất trong năm 2023',
-        metaKeywords: 'quà tặng, top 10, xu hướng, 2023',
-        author: 'Admin',
-        publishedAt: new Date(),
-        viewCount: 128,
-        blogCategoryId: blogCategories[3].id
-      },
-      {
-        title: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
-        content: '<p>Nhân dịp Tết Dương lịch 2024, chúng tôi có nhiều chương trình khuyến mãi đặc biệt...</p><p>Giảm giá lên đến 50% cho nhiều sản phẩm...</p>',
-        slug: 'khuyen-mai-dac-biet-dip-tet-duong-lich-2024',
-        metaTitle: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
-        metaDescription: 'Thông tin về chương trình khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
-        metaKeywords: 'khuyến mãi, Tết Dương lịch, 2024, giảm giá',
-        author: 'Admin',
-        publishedAt: new Date(),
-        viewCount: 256,
-        blogCategoryId: blogCategories[1].id
-      },
-      {
-        title: 'Hướng dẫn gói quà đẹp và độc đáo',
-        content: '<p>Bài viết này sẽ hướng dẫn bạn cách gói những món quà đẹp và độc đáo...</p><p>Với một chút sáng tạo, bạn có thể gói quà theo nhiều phong cách khác nhau...</p>',
-        slug: 'huong-dan-goi-qua-dep-va-doc-dao',
-        metaTitle: 'Hướng dẫn gói quà đẹp và độc đáo',
-        metaDescription: 'Học cách gói quà đẹp và độc đáo với các kỹ thuật gói quà sáng tạo',
-        metaKeywords: 'gói quà, hướng dẫn, sáng tạo, độc đáo',
-        author: 'Admin',
-        publishedAt: new Date(),
-        viewCount: 78,
-        blogCategoryId: blogCategories[2].id
-      }
-    ]);
+    // Kiểm tra bài viết blog đã tồn tại
+    const existingBlogPosts = await BlogPost.findAll();
+    if (existingBlogPosts.length > 0) {
+      console.log('Dữ liệu bài viết blog đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho bài viết blog.');
+    } else {
+      console.log('Tạo bài viết blog mẫu...');
+      // Tạo bài viết blog mẫu
+      await BlogPost.bulkCreate([
+        {
+          title: 'Bật mí cách chọn quà tặng ý nghĩa cho người thân',
+          content: '<p>Bài viết này sẽ giúp bạn hiểu cách chọn quà tặng ý nghĩa cho người thân yêu...</p><p>Khi chọn quà, bạn nên quan tâm đến sở thích của người nhận...</p>',
+          slug: 'bat-mi-cach-chon-qua-tang-y-nghia',
+          metaTitle: 'Cách chọn quà tặng ý nghĩa cho người thân',
+          metaDescription: 'Bài viết chia sẻ những bí quyết chọn quà tặng ý nghĩa cho người thân yêu dịp đặc biệt',
+          metaKeywords: 'quà tặng, ý nghĩa, người thân, bí quyết',
+          author: 'Admin',
+          publishedAt: new Date(),
+          viewCount: 45,
+          blogCategoryId: blogCategories[0].id
+        },
+        {
+          title: 'Top 10 món quà được yêu thích nhất năm 2023',
+          content: '<p>Năm 2023 đã chứng kiến nhiều xu hướng quà tặng mới...</p><p>Dưới đây là top 10 món quà được yêu thích nhất...</p>',
+          slug: 'top-10-mon-qua-duoc-yeu-thich-nhat-nam-2023',
+          metaTitle: 'Top 10 món quà được yêu thích nhất năm 2023',
+          metaDescription: 'Khám phá những món quà tặng được yêu thích nhất trong năm 2023',
+          metaKeywords: 'quà tặng, top 10, xu hướng, 2023',
+          author: 'Admin',
+          publishedAt: new Date(),
+          viewCount: 128,
+          blogCategoryId: blogCategories[3].id
+        },
+        {
+          title: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
+          content: '<p>Nhân dịp Tết Dương lịch 2024, chúng tôi có nhiều chương trình khuyến mãi đặc biệt...</p><p>Giảm giá lên đến 50% cho nhiều sản phẩm...</p>',
+          slug: 'khuyen-mai-dac-biet-dip-tet-duong-lich-2024',
+          metaTitle: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
+          metaDescription: 'Thông tin về chương trình khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
+          metaKeywords: 'khuyến mãi, Tết Dương lịch, 2024, giảm giá',
+          author: 'Admin',
+          publishedAt: new Date(),
+          viewCount: 256,
+          blogCategoryId: blogCategories[1].id
+        },
+        {
+          title: 'Hướng dẫn gói quà đẹp và độc đáo',
+          content: '<p>Bài viết này sẽ hướng dẫn bạn cách gói những món quà đẹp và độc đáo...</p><p>Với một chút sáng tạo, bạn có thể gói quà theo nhiều phong cách khác nhau...</p>',
+          slug: 'huong-dan-goi-qua-dep-va-doc-dao',
+          metaTitle: 'Hướng dẫn gói quà đẹp và độc đáo',
+          metaDescription: 'Học cách gói quà đẹp và độc đáo với các kỹ thuật gói quà sáng tạo',
+          metaKeywords: 'gói quà, hướng dẫn, sáng tạo, độc đáo',
+          author: 'Admin',
+          publishedAt: new Date(),
+          viewCount: 78,
+          blogCategoryId: blogCategories[2].id
+        }
+      ]);
+    }
 
-    console.log('Tạo dữ liệu Media mẫu...');
-    // Tạo dữ liệu Media mẫu
-    await Media.bulkCreate([
-      {
-        name: 'banner-home-1.jpg',
-        path: '/uploads/banner-home-1.jpg',
-        altText: 'Banner trang chủ khuyến mãi mùa hè',
-      },
-      {
-        name: 'banner-home-2.jpg',
-        path: '/uploads/banner-home-2.jpg',
-        altText: 'Banner trang chủ sản phẩm mới',
-      },
-      {
-        name: 'logo.png',
-        path: '/uploads/logo.png',
-        altText: 'Logo website',
-      },
-      {
-        name: 'product-placeholder.jpg',
-        path: '/uploads/product-placeholder.jpg',
-        altText: 'Hình ảnh mặc định cho sản phẩm',
-      },
-      {
-        name: 'team-member-1.jpg',
-        path: '/uploads/team-member-1.jpg',
-        altText: 'Thành viên đội ngũ 1',
-      },
-      {
-        name: 'team-member-2.jpg',
-        path: '/uploads/team-member-2.jpg',
-        altText: 'Thành viên đội ngũ 2',
-      }
-    ]);
+    // Kiểm tra media đã tồn tại
+    const existingMedia = await Media.findAll();
+    if (existingMedia.length > 0) {
+      console.log('Dữ liệu media đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho media.');
+    } else {
+      console.log('Tạo dữ liệu Media mẫu...');
+      // Tạo dữ liệu Media mẫu
+      await Media.bulkCreate([
+        {
+          name: 'banner-home-1.jpg',
+          path: '/uploads/banner-home-1.jpg',
+          altText: 'Banner trang chủ khuyến mãi mùa hè',
+        },
+        {
+          name: 'banner-home-2.jpg',
+          path: '/uploads/banner-home-2.jpg',
+          altText: 'Banner trang chủ sản phẩm mới',
+        },
+        {
+          name: 'logo.png',
+          path: '/uploads/logo.png',
+          altText: 'Logo website',
+        },
+        {
+          name: 'product-placeholder.jpg',
+          path: '/uploads/product-placeholder.jpg',
+          altText: 'Hình ảnh mặc định cho sản phẩm',
+        },
+        {
+          name: 'team-member-1.jpg',
+          path: '/uploads/team-member-1.jpg',
+          altText: 'Thành viên đội ngũ 1',
+        },
+        {
+          name: 'team-member-2.jpg',
+          path: '/uploads/team-member-2.jpg',
+          altText: 'Thành viên đội ngũ 2',
+        }
+      ]);
+    }
 
-    console.log('- Tạo dữ liệu đơn hàng và chi tiết đơn hàng...');
-    
-    // Tạo orders
-    const orders = await Order.bulkCreate([
-      {
-        userId: users[1].id, // Test User
-        recipientName: 'Nguyễn Văn A',
-        recipientPhone: '0123456789',
-        recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
-        notes: 'Giao hàng giờ hành chính',
-        status: OrderStatus.DELIVERED,
-        totalAmount: 22990000,
-        createdAt: new Date(Date.now() - 864000000), // 10 ngày trước
-        updatedAt: new Date(Date.now() - 864000000)
-      },
-      {
-        userId: users[1].id, // Test User
-        recipientName: 'Nguyễn Văn A',
-        recipientPhone: '0123456789',
-        recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
-        notes: 'Gọi trước khi giao',
-        status: OrderStatus.PENDING,
-        totalAmount: 31990000,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        userId: null, // Khách không đăng nhập
-        recipientName: 'Trần Thị B',
-        recipientPhone: '0987654321',
-        recipientAddress: '456 Đường XYZ, Quận 2, TP HCM',
-        notes: '',
-        status: OrderStatus.PROCESSING,
-        totalAmount: 20990000,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
-    
-    // Tạo order items
-    await OrderItem.bulkCreate([
-      {
-        orderId: orders[0].id, // Đơn hàng đầu tiên
-        productId: products[0].id, // iPhone 13
-        productItemId: productItems[0].id, // iPhone 13 128GB Đen
-        quantity: 1,
-        price: 22990000,
-        originalPrice: 24990000,
-        color: 'Đen',
-        productName: 'iPhone 13',
-        itemName: 'iPhone 13 128GB',
-        itemStatus: ProductItemStatus.AVAILABLE,
-        createdAt: new Date(Date.now() - 864000000), // 10 ngày trước
-        updatedAt: new Date(Date.now() - 864000000)
-      },
-      {
-        orderId: orders[1].id, // Đơn hàng thứ hai
-        productId: products[2].id, // MacBook Pro
-        productItemId: productItems[3].id, // MacBook Pro M1 13"
-        quantity: 1,
-        price: 31990000,
-        originalPrice: 32990000,
-        color: 'Xám',
-        productName: 'MacBook Pro',
-        itemName: 'MacBook Pro M1 13"',
-        itemStatus: ProductItemStatus.AVAILABLE,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      },
-      {
-        orderId: orders[2].id, // Đơn hàng thứ ba
-        productId: products[1].id, // Samsung Galaxy S21
-        productItemId: productItems[2].id, // Samsung Galaxy S21 128GB
-        quantity: 1,
-        price: 20990000,
-        originalPrice: 21990000,
-        color: 'Đen',
-        productName: 'Samsung Galaxy S21',
-        itemName: 'Samsung Galaxy S21 128GB',
-        itemStatus: ProductItemStatus.AVAILABLE,
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-    ]);
-    
-    console.log(`- Đã tạo ${orders.length} đơn hàng và ${orders.length} chi tiết đơn hàng.`);
+    // Kiểm tra đơn hàng đã tồn tại
+    const existingOrders = await Order.findAll();
+    if (existingOrders.length > 0) {
+      console.log('Dữ liệu đơn hàng đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho đơn hàng.');
+    } else {
+      console.log('- Tạo dữ liệu đơn hàng và chi tiết đơn hàng...');
+      
+      // Tạo orders
+      const orders = await Order.bulkCreate([
+        {
+          userId: users[1].id, // Test User
+          recipientName: 'Nguyễn Văn A',
+          recipientPhone: '0123456789',
+          recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
+          notes: 'Giao hàng giờ hành chính',
+          status: OrderStatus.DELIVERED,
+          totalAmount: 299000,
+          createdAt: new Date(Date.now() - 864000000), // 10 ngày trước
+          updatedAt: new Date(Date.now() - 864000000)
+        },
+        {
+          userId: users[1].id, // Test User
+          recipientName: 'Nguyễn Văn A',
+          recipientPhone: '0123456789',
+          recipientAddress: '123 Đường ABC, Quận 1, TP HCM',
+          notes: 'Gọi trước khi giao',
+          status: OrderStatus.PENDING,
+          totalAmount: 159000,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          userId: null, // Khách không đăng nhập
+          recipientName: 'Trần Thị B',
+          recipientPhone: '0987654321',
+          recipientAddress: '456 Đường XYZ, Quận 2, TP HCM',
+          notes: '',
+          status: OrderStatus.PROCESSING,
+          totalAmount: 199000,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]);
+      
+      // Tạo order items
+      await OrderItem.bulkCreate([
+        {
+          orderId: orders[0].id, // Đơn hàng đầu tiên
+          productId: products[0].id, // Búp bê Barbie
+          productItemId: productItems[0].id, // Barbie Classic
+          quantity: 1,
+          price: 299000,
+          originalPrice: 399000,
+          color: 'Hồng',
+          productName: 'Búp bê Barbie',
+          itemName: 'Barbie Classic',
+          itemStatus: ProductItemStatus.AVAILABLE,
+          createdAt: new Date(Date.now() - 864000000), // 10 ngày trước
+          updatedAt: new Date(Date.now() - 864000000)
+        },
+        {
+          orderId: orders[1].id, // Đơn hàng thứ hai
+          productId: products[2].id, // Áo thun nam
+          productItemId: productItems[3].id, // Áo thun nam - Size S
+          quantity: 1,
+          price: 159000,
+          originalPrice: 199000,
+          color: 'Xanh',
+          productName: 'Áo thun nam',
+          itemName: 'Áo thun nam - Size S',
+          itemStatus: ProductItemStatus.AVAILABLE,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        },
+        {
+          orderId: orders[2].id, // Đơn hàng thứ ba
+          productId: products[1].id, // Truyện cổ tích
+          productItemId: productItems[2].id, // Truyện cổ tích - Bản đặc biệt
+          quantity: 1,
+          price: 199000,
+          originalPrice: 249000,
+          color: 'Nhiều màu',
+          productName: 'Truyện cổ tích',
+          itemName: 'Truyện cổ tích - Bản đặc biệt',
+          itemStatus: ProductItemStatus.AVAILABLE,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        }
+      ]);
+      
+      console.log(`- Đã tạo ${orders.length} đơn hàng và ${orders.length} chi tiết đơn hàng.`);
+    }
 
     console.log('Đã tạo dữ liệu mẫu thành công!');
   } catch (error) {
