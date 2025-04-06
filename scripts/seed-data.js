@@ -61,6 +61,46 @@ const OrderStatus = {
   CANCELLED: 'cancelled'
 };
 
+// Định nghĩa User model
+const User = sequelize.define('User', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+  },
+  email: {
+    type: new DataTypes.STRING(128),
+    allowNull: false,
+    unique: true,
+  },
+  password: {
+    type: new DataTypes.STRING(256),
+    allowNull: false,
+  },
+  role: {
+    type: DataTypes.ENUM('user', 'admin'),
+    allowNull: false,
+    defaultValue: 'user',
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+}, {
+  tableName: 'users',
+  timestamps: true,
+});
+
 // Định nghĩa các models
 // 1. Product model
 const Product = sequelize.define('Product', {
@@ -806,6 +846,24 @@ async function seedData() {
         url: '/uploads/game-console-demo.mp4',
       },
     ]);
+
+    console.log('Tạo dữ liệu người dùng mẫu...');
+    // Tạo dữ liệu người dùng
+    const users = await User.bulkCreate([
+      {
+        name: 'Admin',
+        email: 'admin@example.com',
+        password: await bcrypt.hash('admin123', 10),
+        role: 'admin',
+      },
+      {
+        name: 'Test User',
+        email: 'user@example.com',
+        password: await bcrypt.hash('user123', 10),
+        role: 'user',
+      },
+    ]);
+    console.log(`- Đã tạo ${users.length} người dùng.`);
 
     console.log('Tạo danh mục blog mẫu...');
     // Tạo danh mục blog mẫu
