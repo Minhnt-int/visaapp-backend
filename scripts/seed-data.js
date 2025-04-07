@@ -1,4 +1,4 @@
-const { Sequelize, DataTypes } = require('sequelize');
+const { Sequelize, DataTypes, Op } = require('sequelize');
 const bcrypt = require('bcryptjs');
 require('dotenv').config();
 const fs = require('fs');
@@ -125,8 +125,8 @@ const Product = sequelize.define('Product', {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
   },
-  avatarId: {
-    type: DataTypes.INTEGER.UNSIGNED,
+  avatarUrl: {
+    type: new DataTypes.STRING(512),
     allowNull: true,
   },
   slug: {
@@ -185,8 +185,8 @@ const ProductCategory = sequelize.define('ProductCategory', {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: true,
   },
-  avatarId: {
-    type: DataTypes.INTEGER.UNSIGNED,
+  avatarUrl: {
+    type: new DataTypes.STRING(512),
     allowNull: true,
   },
   createdAt: {
@@ -267,8 +267,8 @@ const ProductMedia = sequelize.define('ProductMedia', {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
   },
-  mediaId: {
-    type: DataTypes.INTEGER.UNSIGNED,
+  url: {
+    type: new DataTypes.STRING(512),
     allowNull: false,
   },
   type: {
@@ -307,8 +307,8 @@ const BlogCategory = sequelize.define('BlogCategory', {
     allowNull: false,
     unique: true,
   },
-  avatarId: {
-    type: DataTypes.INTEGER.UNSIGNED,
+  avatarUrl: {
+    type: new DataTypes.STRING(512),
     allowNull: true,
   },
   createdAt: {
@@ -384,8 +384,8 @@ const BlogPost = sequelize.define('BlogPost', {
     type: DataTypes.INTEGER.UNSIGNED,
     allowNull: false,
   },
-  avatarId: {
-    type: DataTypes.INTEGER.UNSIGNED,
+  avatarUrl: {
+    type: new DataTypes.STRING(512),
     allowNull: true,
   },
   createdAt: {
@@ -714,8 +714,8 @@ async function seedData() {
       console.log('Dữ liệu danh mục sản phẩm đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho danh mục.');
       var categories = existingCategories;
     } else {
-      console.log('Tạo danh mục sản phẩm mẫu...');
-      // 1. Tạo danh mục sản phẩm
+      console.log('Tạo danh mục sản phẩm cấp 1...');
+      // 1. Tạo danh mục sản phẩm cấp 1 (parent categories)
       categories = await ProductCategory.bulkCreate([
         {
           name: 'Đồ chơi',
@@ -738,6 +738,59 @@ async function seedData() {
           description: 'Các sản phẩm điện tử giải trí cho trẻ',
         },
       ]);
+
+      console.log('Tạo danh mục sản phẩm cấp 2...');
+      // 2. Tạo danh mục sản phẩm cấp 2 (subcategories)
+      var subCategories = await ProductCategory.bulkCreate([
+        {
+          name: 'Búp bê',
+          slug: 'bup-be',
+          description: 'Các loại búp bê thời trang',
+          parentId: categories[0].id, // Thuộc Đồ chơi
+        },
+        {
+          name: 'Đồ chơi mô hình',
+          slug: 'do-choi-mo-hinh',
+          description: 'Các loại đồ chơi mô hình',
+          parentId: categories[0].id, // Thuộc Đồ chơi
+        },
+        {
+          name: 'Sách thiếu nhi',
+          slug: 'sach-thieu-nhi',
+          description: 'Sách dành cho trẻ em',
+          parentId: categories[1].id, // Thuộc Sách
+        },
+        {
+          name: 'Truyện tranh',
+          slug: 'truyen-tranh',
+          description: 'Các loại truyện tranh',
+          parentId: categories[1].id, // Thuộc Sách
+        },
+        {
+          name: 'Áo',
+          slug: 'ao',
+          description: 'Các loại áo cho trẻ em',
+          parentId: categories[2].id, // Thuộc Quần áo
+        },
+        {
+          name: 'Quần',
+          slug: 'quan',
+          description: 'Các loại quần cho trẻ em',
+          parentId: categories[2].id, // Thuộc Quần áo
+        },
+        {
+          name: 'Máy chơi game',
+          slug: 'may-choi-game',
+          description: 'Các loại máy chơi game',
+          parentId: categories[3].id, // Thuộc Đồ điện tử
+        },
+        {
+          name: 'Đồ chơi điện tử thông minh',
+          slug: 'do-choi-dien-tu-thong-minh',
+          description: 'Các loại đồ chơi điện tử thông minh',
+          parentId: categories[3].id, // Thuộc Đồ điện tử
+        },
+      ]);
     }
 
     // Kiểm tra sản phẩm đã tồn tại
@@ -746,14 +799,33 @@ async function seedData() {
       console.log('Dữ liệu sản phẩm đã tồn tại. Bỏ qua việc tạo dữ liệu mẫu cho sản phẩm.');
       var products = existingProducts;
     } else {
-      // 2. Tạo sản phẩm
+      // Nếu chưa có subcategories (trong trường hợp categories đã tồn tại), lấy subcategories từ database
+      if (!subCategories) {
+        const existingSubCategories = await ProductCategory.findAll({
+          where: {
+            parentId: {
+              [Op.ne]: null
+            }
+          }
+        });
+        
+        if (existingSubCategories.length === 0) {
+          console.log('Không tìm thấy danh mục cấp 2. Bỏ qua việc tạo sản phẩm.');
+          return;
+        }
+        
+        subCategories = existingSubCategories;
+      }
+      
+      // 3. Tạo sản phẩm với categoryId từ danh mục cấp 2
+      console.log('Tạo sản phẩm mẫu với danh mục cấp 2...');
       products = await Product.bulkCreate([
         {
           name: 'Búp bê Barbie',
           slug: 'bup-be-barbie',
           description: 'Búp bê Barbie cao cấp',
           shortDescription: 'Búp bê Barbie phiên bản mới nhất 2024',
-          categoryId: categories[0].id,
+          categoryId: subCategories[0].id, // Búp bê
           metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
           metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
           metaKeywords: 'bup be, barbie, do choi tre em',
@@ -763,7 +835,7 @@ async function seedData() {
           slug: 'truyen-co-tich',
           description: 'Tuyển tập truyện cổ tích Việt Nam',
           shortDescription: 'Bộ sưu tập các câu chuyện cổ tích Việt Nam hay nhất',
-          categoryId: categories[1].id,
+          categoryId: subCategories[2].id, // Sách thiếu nhi
           metaTitle: 'Truyện cổ tích Việt Nam',
           metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
           metaKeywords: 'truyen co tich, sach tre em',
@@ -773,7 +845,7 @@ async function seedData() {
           slug: 'ao-thun-nam',
           description: 'Áo thun nam trẻ em',
           shortDescription: 'Áo thun nam trẻ em chất liệu cotton thoáng mát',
-          categoryId: categories[2].id,
+          categoryId: subCategories[4].id, // Áo
           metaTitle: 'Áo thun nam trẻ em',
           metaDescription: 'Áo thun nam trẻ em chất lượng cao',
           metaKeywords: 'ao thun, quan ao tre em',
@@ -783,7 +855,7 @@ async function seedData() {
           slug: 'may-choi-game-cam-tay',
           description: 'Máy chơi game cầm tay mini với hơn 400 trò chơi',
           shortDescription: 'Máy chơi game cầm tay phù hợp cho trẻ từ 6 tuổi trở lên',
-          categoryId: categories[3].id,
+          categoryId: subCategories[6].id, // Máy chơi game
           metaTitle: 'Máy chơi game cầm tay mini',
           metaDescription: 'Máy chơi game cầm tay mini với hơn 400 trò chơi cổ điển',
           metaKeywords: 'game, máy chơi game, đồ điện tử trẻ em',
@@ -979,28 +1051,28 @@ async function seedData() {
       console.log(`- Đã tạo ${mediaEntries.length} bản ghi media.`);
     }
 
-    // Cập nhật Product với avatarId
+    // Cập nhật Product với avatarUrl
     if (products && products.length > 0 && mediaEntries && mediaEntries.length > 0) {
-      console.log('Cập nhật avatarId cho sản phẩm...');
+      console.log('Cập nhật avatarUrl cho sản phẩm...');
       await Promise.all([
-        products[0].update({ avatarId: mediaEntries[0].id }), // Búp bê Barbie -> product_media_1
-        products[1].update({ avatarId: mediaEntries[2].id }), // Truyện cổ tích -> product_media_3
-        products[2].update({ avatarId: mediaEntries[3].id }), // Áo thun nam -> product_media_4
-        products[3].update({ avatarId: mediaEntries[4].id })  // Máy chơi game -> product_media_5
+        products[0].update({ avatarUrl: mediaEntries[0].path }), // Búp bê Barbie -> product_media_1
+        products[1].update({ avatarUrl: mediaEntries[2].path }), // Truyện cổ tích -> product_media_3
+        products[2].update({ avatarUrl: mediaEntries[3].path }), // Áo thun nam -> product_media_4
+        products[3].update({ avatarUrl: mediaEntries[4].path })  // Máy chơi game -> product_media_5
       ]);
-      console.log('- Đã cập nhật avatarId cho sản phẩm.');
+      console.log('- Đã cập nhật avatarUrl cho sản phẩm.');
     }
 
-    // Cập nhật ProductCategory với avatarId
+    // Cập nhật ProductCategory với avatarUrl
     if (categories && categories.length > 0 && mediaEntries && mediaEntries.length > 0) {
-      console.log('Cập nhật avatarId cho danh mục sản phẩm...');
+      console.log('Cập nhật avatarUrl cho danh mục sản phẩm...');
       await Promise.all([
-        categories[0].update({ avatarId: mediaEntries[6].id }), // Đồ chơi -> product_category_1
-        categories[1].update({ avatarId: mediaEntries[7].id }), // Sách -> product_category_2
-        categories[2].update({ avatarId: mediaEntries[8].id }), // Quần áo -> product_category_3
-        categories[3].update({ avatarId: mediaEntries[9].id })  // Đồ điện tử -> product_category_4
+        categories[0].update({ avatarUrl: mediaEntries[6].path }), // Đồ chơi -> product_category_1
+        categories[1].update({ avatarUrl: mediaEntries[7].path }), // Sách -> product_category_2
+        categories[2].update({ avatarUrl: mediaEntries[8].path }), // Quần áo -> product_category_3
+        categories[3].update({ avatarUrl: mediaEntries[9].path })  // Đồ điện tử -> product_category_4
       ]);
-      console.log('- Đã cập nhật avatarId cho danh mục sản phẩm.');
+      console.log('- Đã cập nhật avatarUrl cho danh mục sản phẩm.');
     }
 
     // Kiểm tra danh mục blog đã tồn tại
@@ -1032,19 +1104,19 @@ async function seedData() {
       console.log(`- Đã tạo ${blogCategories.length} danh mục blog.`);
     }
 
-    // Cập nhật BlogCategory với avatarId
+    // Cập nhật BlogCategory với avatarUrl
     if (blogCategories && blogCategories.length > 0 && mediaEntries && mediaEntries.length > 0) {
-      console.log('Cập nhật avatarId cho danh mục blog...');
+      console.log('Cập nhật avatarUrl cho danh mục blog...');
       await Promise.all([
-        blogCategories[0].update({ avatarId: mediaEntries[10].id }), // Tin tức -> blog_category_1
-        blogCategories[1].update({ avatarId: mediaEntries[11].id })  // Khuyến mãi -> blog_category_2
+        blogCategories[0].update({ avatarUrl: mediaEntries[10].path }), // Tin tức -> blog_category_1
+        blogCategories[1].update({ avatarUrl: mediaEntries[11].path })  // Khuyến mãi -> blog_category_2
       ]);
-      console.log('- Đã cập nhật avatarId cho danh mục blog.');
+      console.log('- Đã cập nhật avatarUrl cho danh mục blog.');
     }
 
     // Kiểm tra ProductMedia đã tồn tại
     const existingProductMedia = await ProductMedia.findAll({
-      attributes: ['id', 'productId', 'type', 'mediaId', 'createdAt', 'updatedAt']
+      attributes: ['id', 'productId', 'type', 'url', 'createdAt', 'updatedAt']
     });
     if (existingProductMedia.length === 0 && products && products.length > 0 && mediaEntries && mediaEntries.length > 0) {
       console.log('Tạo dữ liệu ProductMedia mới...');
@@ -1052,32 +1124,32 @@ async function seedData() {
         {
           productId: products[0].id, // Búp bê Barbie
           type: 'image',
-          mediaId: mediaEntries[0].id // product_media_1
+          url: mediaEntries[0].path // product_media_1
         },
         {
           productId: products[0].id, // Búp bê Barbie
           type: 'image',
-          mediaId: mediaEntries[1].id // product_media_2
+          url: mediaEntries[1].path // product_media_2
         },
         {
           productId: products[1].id, // Truyện cổ tích
           type: 'image',
-          mediaId: mediaEntries[2].id // product_media_3
+          url: mediaEntries[2].path // product_media_3
         },
         {
           productId: products[2].id, // Áo thun nam
           type: 'image',
-          mediaId: mediaEntries[3].id // product_media_4
+          url: mediaEntries[3].path // product_media_4
         },
         {
           productId: products[3].id, // Máy chơi game
           type: 'image',
-          mediaId: mediaEntries[4].id // product_media_5
+          url: mediaEntries[4].path // product_media_5
         },
         {
           productId: products[3].id, // Máy chơi game
           type: 'video',
-          mediaId: mediaEntries[5].id // product_media_6
+          url: mediaEntries[5].path // product_media_6
         }
       ]);
       console.log('- Đã tạo dữ liệu ProductMedia.');
@@ -1086,21 +1158,21 @@ async function seedData() {
     // Kiểm tra bài viết blog đã tồn tại
     const existingBlogPosts = await BlogPost.findAll();
     if (existingBlogPosts.length > 0 && mediaEntries && mediaEntries.length > 0) {
-      console.log('Cập nhật avatarId cho bài viết blog...');
+      console.log('Cập nhật avatarUrl cho bài viết blog...');
       
       // Kiểm tra xem có đủ media entries không
       if (existingBlogPosts.length >= 2 && mediaEntries.length >= 14) {
         await Promise.all([
-          existingBlogPosts[0].update({ avatarId: mediaEntries[12].id }), // Bài viết 1 -> blog_post_1
-          existingBlogPosts[1].update({ avatarId: mediaEntries[13].id })  // Bài viết 2 -> blog_post_2
+          existingBlogPosts[0].update({ avatarUrl: mediaEntries[12].path }), // Bài viết 1 -> blog_post_1
+          existingBlogPosts[1].update({ avatarUrl: mediaEntries[13].path })  // Bài viết 2 -> blog_post_2
         ]);
-        console.log('- Đã cập nhật avatarId cho bài viết blog.');
+        console.log('- Đã cập nhật avatarUrl cho bài viết blog.');
       } else {
         console.log('- Không đủ media entries để cập nhật blog posts.');
       }
     } else if (existingBlogPosts.length === 0) {
-      console.log('Tạo bài viết blog mẫu với avatarId...');
-      // Tạo bài viết blog mẫu với avatarId
+      console.log('Tạo bài viết blog mẫu với avatarUrl...');
+      // Tạo bài viết blog mẫu với avatarUrl
       
       // Xác định blogCategoryId dựa trên các danh mục đã tạo
       const blogCategoryIds = [];
@@ -1128,7 +1200,7 @@ async function seedData() {
           publishedAt: new Date(),
           viewCount: 45,
           blogCategoryId: blogCategoryIds[0],
-          avatarId: mediaEntries[12].id // blog_post_1
+          avatarUrl: mediaEntries[12].path // blog_post_1
         },
         {
           title: 'Top 10 món quà được yêu thích nhất năm 2023',
@@ -1141,7 +1213,7 @@ async function seedData() {
           publishedAt: new Date(),
           viewCount: 128,
           blogCategoryId: blogCategoryIds[Math.min(blogCategoryIds.length - 1, 3)],
-          avatarId: mediaEntries[13].id // blog_post_2
+          avatarUrl: mediaEntries[13].path // blog_post_2
         },
         {
           title: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
@@ -1168,7 +1240,7 @@ async function seedData() {
           blogCategoryId: blogCategoryIds[Math.min(blogCategoryIds.length - 1, 2)]
         }
       ]);
-      console.log('- Đã tạo bài viết blog mẫu với avatarId.');
+      console.log('- Đã tạo bài viết blog mẫu với avatarUrl.');
     }
 
     // Kiểm tra đơn hàng đã tồn tại

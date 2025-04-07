@@ -24,7 +24,7 @@ export interface ProductCategoryAttributes {
   slug: string;
   description?: string;
   parentId?: number;
-  avatarId?: number;
+  avatarUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -38,7 +38,7 @@ class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCr
   public slug!: string;
   public description!: string;
   public parentId!: number;
-  public avatarId!: number;
+  public avatarUrl!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -67,8 +67,8 @@ ProductCategory.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: true,
     },
-    avatarId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    avatarUrl: {
+      type: new DataTypes.STRING(512),
       allowNull: true,
     },
     createdAt: {
@@ -96,7 +96,7 @@ export interface ProductAttributes {
   description?: string;
   shortDescription?: string;
   categoryId: number;
-  avatarId?: number;
+  avatarUrl?: string;
   slug: string;
   metaTitle?: string;
   metaDescription?: string;
@@ -114,7 +114,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public description!: string;
   public shortDescription!: string;
   public categoryId!: number;
-  public avatarId!: number;
+  public avatarUrl!: string;
   public slug!: string;
   public metaTitle!: string;
   public metaDescription!: string;
@@ -146,8 +146,8 @@ Product.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    avatarId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    avatarUrl: {
+      type: new DataTypes.STRING(512),
       allowNull: true,
     },
     slug: {
@@ -268,7 +268,7 @@ ProductItem.init(
 export interface ProductMediaAttributes {
   id: number;
   productId: number;
-  mediaId: number;
+  url: string;
   type: string;
   createdAt?: Date;
   updatedAt?: Date;
@@ -280,7 +280,7 @@ export interface ProductMediaCreationAttributes extends Optional<ProductMediaAtt
 class ProductMedia extends Model<ProductMediaAttributes, ProductMediaCreationAttributes> implements ProductMediaAttributes {
   public id!: number;
   public productId!: number;
-  public mediaId!: number;
+  public url!: string;
   public type!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
@@ -297,8 +297,8 @@ ProductMedia.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    mediaId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    url: {
+      type: new DataTypes.STRING(512),
       allowNull: false,
     },
     type: {
@@ -594,7 +594,7 @@ export interface BlogCategoryAttributes {
   id: number;
   name: string;
   slug: string;
-  avatarId?: number;
+  avatarUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -605,7 +605,7 @@ class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAtt
   public id!: number;
   public name!: string;
   public slug!: string;
-  public avatarId!: number;
+  public avatarUrl!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -626,8 +626,8 @@ BlogCategory.init(
       allowNull: false,
       unique: true,
     },
-    avatarId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    avatarUrl: {
+      type: new DataTypes.STRING(512),
       allowNull: true,
     },
     createdAt: {
@@ -670,7 +670,7 @@ export interface BlogPostAttributes {
   publishedAt?: Date;
   viewCount?: number;
   blogCategoryId: number;
-  avatarId?: number;
+  avatarUrl?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -689,7 +689,7 @@ class BlogPost extends Model<BlogPostAttributes, BlogPostCreationAttributes> imp
   public publishedAt!: Date;
   public viewCount!: number;
   public blogCategoryId!: number;
-  public avatarId!: number;
+  public avatarUrl!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -742,8 +742,8 @@ BlogPost.init(
       type: DataTypes.INTEGER.UNSIGNED,
       allowNull: false,
     },
-    avatarId: {
-      type: DataTypes.INTEGER.UNSIGNED,
+    avatarUrl: {
+      type: new DataTypes.STRING(512),
       allowNull: true,
     },
     createdAt: {
@@ -930,62 +930,5 @@ User.init(
 );
 
 // Other relationships are here
-
-// ProductMedia - Media
-ProductMedia.belongsTo(Media, {
-  foreignKey: 'mediaId',
-  as: 'media',
-});
-
-Media.hasMany(ProductMedia, {
-  sourceKey: 'id',
-  foreignKey: 'mediaId',
-  as: 'productMedia',
-});
-
-// Media Model relationships with avatarId fields
-Media.hasMany(Product, {
-  sourceKey: 'id',
-  foreignKey: 'avatarId',
-  as: 'products',
-});
-
-Product.belongsTo(Media, {
-  foreignKey: 'avatarId',
-  as: 'avatar',
-});
-
-Media.hasMany(ProductCategory, {
-  sourceKey: 'id',
-  foreignKey: 'avatarId',
-  as: 'productCategories',
-});
-
-ProductCategory.belongsTo(Media, {
-  foreignKey: 'avatarId',
-  as: 'avatar',
-});
-
-Media.hasMany(BlogCategory, {
-  sourceKey: 'id',
-  foreignKey: 'avatarId',
-  as: 'blogCategories',
-});
-
-BlogCategory.belongsTo(Media, {
-  foreignKey: 'avatarId',
-  as: 'avatar',
-});
-
-Media.hasMany(BlogPost, {
-  sourceKey: 'id',
-  foreignKey: 'avatarId',
-  as: 'blogPosts',
-});
-
-BlogPost.belongsTo(Media, {
-  foreignKey: 'avatarId',
-  as: 'avatar',
-});
 
 export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media }; 

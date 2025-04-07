@@ -32,7 +32,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   try {
     const { 
       id, title, content, slug, metaTitle, metaDescription, 
-      metaKeywords, author, publishedAt, blogCategoryId, avatarId
+      metaKeywords, author, publishedAt, blogCategoryId, avatarUrl
     } = req.body;
 
     // Log input validation
@@ -120,7 +120,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     if (publishedAt !== undefined) updateFields.publishedAt = publishedAt ? 
       moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate() : null;
     if (blogCategoryId) updateFields.blogCategoryId = blogCategoryId;
-    if (avatarId !== undefined) updateFields.avatarId = avatarId;
+    if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
 
     // Track changes for logging
     const changes: Record<string, { old: any; new: any }> = {};

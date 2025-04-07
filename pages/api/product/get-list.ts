@@ -176,13 +176,9 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         p.metaTitle, 
         p.metaDescription, 
         p.metaKeywords,
-        p.avatarId,
-        m.path as avatarPath,
-        m.type as avatarType
+        p.avatarUrl
       FROM 
         products p
-      LEFT JOIN 
-        media m ON p.avatarId = m.id
       WHERE 
         ${whereClause}
       ORDER BY 
@@ -230,12 +226,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       const productsWithDetails = productsWithImages.map((product: any) => {
         return {
           ...product,
-          avatar: product.avatarId ? {
-            id: product.avatarId,
-            path: product.avatarPath,
-            type: product.avatarType
-          } : null,
-          // category: categoryMap.get(product.categoryId) || null
+          // No need to transform avatarUrl since it's already a URL
         };
       });
       

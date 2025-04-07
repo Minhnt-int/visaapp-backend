@@ -65,9 +65,12 @@ export type CreateProductBody = {
   metaTitle?: string;
   metaDescription?: string;
   metaKeywords?: string;
-  avatarId?: number;
+  avatarUrl?: string;
   items?: any[];
-  media?: number[]; // Array of mediaId values
+  media?: { 
+    type: 'image' | 'video'; 
+    url: string;
+  }[];
 };
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
@@ -84,10 +87,13 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   });
 
   const { 
-    name, description, shortDescription, categoryId, slug, 
+    name, description, shortDescription, categoryId, slug: originalSlug, 
     metaTitle, metaDescription, metaKeywords,
-    items, media, avatarId
+    items, media, avatarUrl
   } = req.body as CreateProductBody;
+
+  // Lưu slug gốc, sẽ được sửa nếu cần
+  let slug = originalSlug;
 
   // Validate input data
   validateProductData(req.body);
@@ -109,6 +115,18 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       name, categoryId, slug 
     });
 
+    // Kiểm tra và xử lý slug đã tồn tại
+    const existingProduct = await Product.findOne({ where: { slug } });
+    if (existingProduct) {
+      // Nếu slug đã tồn tại, thêm hậu tố ngẫu nhiên
+      const randomSuffix = Math.floor(Math.random() * 10000);
+      slug = `${originalSlug}-${randomSuffix}`;
+      logger.debug('Slug already exists, using modified slug', { 
+        originalSlug, 
+        newSlug: slug 
+      });
+    }
+
     // Create product
     const newProduct = await Product.create({
       name,
@@ -119,12 +137,13 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       metaTitle,
       metaDescription,
       metaKeywords,
-      avatarId
+      avatarUrl
     });
 
     logger.debug('Product created successfully', { 
       productId: newProduct.id,
-      name: newProduct.name
+      name: newProduct.name,
+      slug: newProduct.slug
     });
 
     // Add product items if provided
@@ -137,6 +156,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       const itemPromises = items.map((item: any) => {
         return ProductItem.create({
           ...item,
+          status: mapStatusValue(item.status),
           productId: newProduct.id
         });
       });
@@ -155,11 +175,11 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         mediaCount: media.length 
       });
 
-      const mediaPromises = media.map((mediaId: number) => {
+      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; url: string }) => {
         return ProductMedia.create({
           productId: newProduct.id,
-          type: 'image', // Default to image
-          mediaId: mediaId
+          type: mediaItem.type,
+          url: mediaItem.url
         });
       });
 
@@ -174,22 +194,12 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     const productWithDetails = await Product.findByPk(newProduct.id, {
       include: [
         {
-          model: Media,
-          as: 'avatar'
+          model: ProductItem,
+          as: 'items'
         },
         {
           model: ProductMedia,
-          as: 'media',
-          include: [
-            {
-              model: Media,
-              as: 'media'
-            }
-          ]
-        },
-        {
-          model: ProductItem,
-          as: 'items'
+          as: 'media'
         }
       ]
     });

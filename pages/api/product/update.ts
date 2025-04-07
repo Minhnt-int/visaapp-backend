@@ -17,10 +17,10 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     const { 
       id, name, description, shortDescription, categoryId, slug, 
       metaTitle, metaDescription, metaKeywords,
-      avatarId
+      avatarUrl
     } = req.body;
 
-    logger.debug('Updating product', { id, name, categoryId, avatarId });
+    logger.debug('Updating product', { id, name, categoryId, avatarUrl });
 
     // Kiểm tra xem sản phẩm có tồn tại không
     const product = await Product.findByPk(id);
@@ -36,14 +36,6 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       }
     }
 
-    // Kiểm tra avatar nếu có
-    if (avatarId) {
-      const avatar = await Media.findByPk(avatarId);
-      if (!avatar) {
-        throw new AppError(400, 'Avatar media not found', 'MEDIA_NOT_FOUND');
-      }
-    }
-
     // Build update object
     const updateFields: any = {};
     if (name) updateFields.name = name;
@@ -54,7 +46,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     if (metaTitle !== undefined) updateFields.metaTitle = metaTitle;
     if (metaDescription !== undefined) updateFields.metaDescription = metaDescription;
     if (metaKeywords !== undefined) updateFields.metaKeywords = metaKeywords;
-    if (avatarId !== undefined) updateFields.avatarId = avatarId;
+    if (avatarUrl !== undefined) updateFields.avatarUrl = avatarUrl;
 
     // Cập nhật sản phẩm
     await product.update(updateFields);
@@ -62,11 +54,6 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     // Trả về sản phẩm với dữ liệu đã cập nhật
     const updatedProduct = await Product.findByPk(id, {
       include: [
-        {
-          model: Media,
-          as: 'avatar',
-          attributes: ['id', 'path', 'type']
-        },
         {
           model: ProductCategory,
           as: 'category',
@@ -78,7 +65,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     logger.info('Product updated successfully', { 
       id: product.id, 
       name: product.name,
-      avatarId: updateFields.avatarId
+      avatarUrl: updateFields.avatarUrl
     });
 
     res.status(200).json({ 

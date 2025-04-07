@@ -29,14 +29,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     // Get total count and paginated results
     const { count, rows } = await BlogCategory.findAndCountAll({
       where,
-      include: [
-        {
-          model: Media,
-          as: 'avatar',
-          attributes: ['id', 'name', 'path', 'type', 'altText'],
-          required: false
-        }
-      ],
       order: [['createdAt', 'DESC']],
       limit: limitNum,
       offset,
