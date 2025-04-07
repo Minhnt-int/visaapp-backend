@@ -65,6 +65,13 @@ const ProductItemStatus = {
   DISCONTINUED: 'discontinued'
 };
 
+// Định nghĩa enum ProductStatus
+const ProductStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
 // Định nghĩa enum OrderStatus
 const OrderStatus = {
   PENDING: 'pending',
@@ -122,6 +129,11 @@ const Product = sequelize.define('Product', {
   metaKeywords: {
     type: new DataTypes.STRING(256),
     allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM(...Object.values(ProductStatus)),
+    allowNull: false,
+    defaultValue: ProductStatus.ACTIVE,
   },
   createdAt: {
     type: DataTypes.DATE,

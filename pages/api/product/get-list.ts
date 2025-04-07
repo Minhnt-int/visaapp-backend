@@ -1,7 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import sequelize from '../../../lib/db';
-import { Product, ProductCategory, ProductMedia, ProductItem } from '../../../model';
+import { Product, ProductCategory, ProductMedia, ProductItem, ProductStatus } from '../../../model';
 import { Op, Sequelize, QueryTypes } from 'sequelize';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 
@@ -23,10 +23,11 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       maxPrice,
       search,
       sortBy = 'createdAt',
-      sortOrder = 'DESC'
+      sortOrder = 'DESC',
+      status = ProductStatus.ACTIVE
     } = req.query;
 
-    console.log('Query params:', { name, categoryId, page, limit, minPrice, maxPrice, search, sortBy, sortOrder });
+    console.log('Query params:', { name, categoryId, page, limit, minPrice, maxPrice, search, sortBy, sortOrder, status });
 
     // Validate pagination parameters
     const pageNumber = parseInt(page as string, 10);
@@ -41,6 +42,17 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     // Tạo điều kiện tìm kiếm cho Product
     const productWhere: any = {};
+    
+    // Xử lý điều kiện tìm kiếm theo status
+    if (status !== 'all') {
+      // Nếu status là một trong các giá trị hợp lệ của ProductStatus
+      if (Object.values(ProductStatus).includes(status as any)) {
+        productWhere.status = status;
+      } else {
+        // Mặc định lấy sản phẩm ACTIVE
+        productWhere.status = ProductStatus.ACTIVE;
+      }
+    }
     
     // Tạo điều kiện tìm kiếm cho ProductItem
     const itemWhere: any = {};
@@ -160,6 +172,15 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       whereConditions.push(`(p.name LIKE '%${search}%' OR p.description LIKE '%${search}%')`);
     }
     
+    // Thêm điều kiện status
+    if (status !== 'all') {
+      if (Object.values(ProductStatus).includes(status as any)) {
+        whereConditions.push(`p.status = '${status}'`);
+      } else {
+        whereConditions.push(`p.status = '${ProductStatus.ACTIVE}'`);
+      }
+    }
+    
     const whereClause = whereConditions.length > 0 
       ? whereConditions.join(' AND ') 
       : '1=1'; // Default to true if no conditions
@@ -176,7 +197,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         p.metaTitle, 
         p.metaDescription, 
         p.metaKeywords,
-        p.avatarUrl
+        p.avatarUrl,
+        p.status
       FROM 
         products p
       WHERE 
@@ -232,7 +254,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       
       // Count total products for pagination
       const countResult = await sequelize.query(
-        `SELECT COUNT(*) as total FROM products`,
+        `SELECT COUNT(*) as total FROM products p WHERE ${whereClause}`,
         { type: QueryTypes.SELECT }
       );
       

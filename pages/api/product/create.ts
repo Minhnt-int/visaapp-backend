@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import sequelize from '../../../lib/db';
 import { Op } from 'sequelize';
-import { Product, ProductCategory, ProductItem, ProductMedia, ProductItemStatus, Media } from '../../../model';
+import { Product, ProductCategory, ProductItem, ProductMedia, ProductStatus, ProductItemStatus, Media } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
@@ -137,7 +137,8 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       metaTitle,
       metaDescription,
       metaKeywords,
-      avatarUrl
+      avatarUrl,
+      status: ProductStatus.DRAFT
     });
 
     logger.debug('Product created successfully', { 

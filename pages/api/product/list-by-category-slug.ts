@@ -3,6 +3,7 @@ import { connectToDatabase } from '../../../lib/db';
 import sequelize from '../../../lib/db';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
+import { ProductStatus } from '../../../model';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'GET') {
@@ -46,31 +47,31 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     const allCategoryIds = [category.id, ...subcategories.map((sub: any) => sub.id)];
     console.log('Danh sách categoryId:', allCategoryIds.join(', '));
 
-    // Lấy số lượng sản phẩm
+    // Lấy số lượng sản phẩm ACTIVE
     const [countResult] = await sequelize.query(
-      'SELECT COUNT(*) as count FROM products WHERE categoryId IN (?)',
-      { replacements: [allCategoryIds] }
+      'SELECT COUNT(*) as count FROM products WHERE categoryId IN (?) AND status = ?',
+      { replacements: [allCategoryIds, ProductStatus.ACTIVE] }
     );
     
     const count = (countResult as any[])[0].count;
     const totalPages = Math.ceil(count / itemsPerPage);
 
-    // Lấy các sản phẩm thuộc danh mục này và danh mục con
+    // Lấy các sản phẩm thuộc danh mục này và danh mục con, chỉ lấy sản phẩm ACTIVE
     const [productsResult] = await sequelize.query(
       `SELECT p.*, c.name as categoryName, c.slug as categorySlug 
        FROM products p 
        JOIN product_categories c ON p.categoryId = c.id
        WHERE p.categoryId IN (${allCategoryIds.join(',')})
+       AND p.status = ?
        ORDER BY p.createdAt DESC
        LIMIT ? OFFSET ?`,
-      { replacements: [itemsPerPage, offset] }
+      { replacements: [ProductStatus.ACTIVE, itemsPerPage, offset] }
     );
 
     const products = Array.isArray(productsResult) ? productsResult : [];
-    console.log(`Tìm thấy ${products.length} sản phẩm thuộc danh mục này và các danh mục con`);
+    console.log(`Tìm thấy ${products.length} sản phẩm ACTIVE thuộc danh mục này và các danh mục con`);
 
     // Lấy thông tin biến thể và media cho các sản phẩm
-    // (Đây là bước bổ sung tùy chọn, có thể bỏ qua nếu không cần)
     for (const product of products as any[]) {
       // Lấy biến thể sản phẩm
       const [itemsResult] = await sequelize.query(

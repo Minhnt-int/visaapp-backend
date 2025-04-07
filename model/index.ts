@@ -8,6 +8,13 @@ export const ProductItemStatus = {
   DISCONTINUED: 'discontinued'
 };
 
+// Định nghĩa enum ProductStatus cho sản phẩm
+export const ProductStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
 // Định nghĩa enum OrderStatus
 export const OrderStatus = {
   PENDING: 'pending',
@@ -101,6 +108,7 @@ export interface ProductAttributes {
   metaTitle?: string;
   metaDescription?: string;
   metaKeywords?: string;
+  status: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -119,6 +127,7 @@ class Product extends Model<ProductAttributes, ProductCreationAttributes> implem
   public metaTitle!: string;
   public metaDescription!: string;
   public metaKeywords!: string;
+  public status!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -166,6 +175,11 @@ Product.init(
     metaKeywords: {
       type: new DataTypes.STRING(256),
       allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(ProductStatus)),
+      allowNull: false,
+      defaultValue: ProductStatus.ACTIVE,
     },
     createdAt: {
       type: DataTypes.DATE,

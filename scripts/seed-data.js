@@ -61,6 +61,13 @@ const OrderStatus = {
   CANCELLED: 'cancelled'
 };
 
+// Định nghĩa ProductStatus
+const ProductStatus = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  DELETED: 'deleted'
+};
+
 // Định nghĩa User model
 const User = sequelize.define('User', {
   id: {
@@ -829,6 +836,7 @@ async function seedData() {
           metaTitle: 'Búp bê Barbie - Đồ chơi trẻ em',
           metaDescription: 'Búp bê Barbie cao cấp cho trẻ em',
           metaKeywords: 'bup be, barbie, do choi tre em',
+          status: ProductStatus.ACTIVE,
         },
         {
           name: 'Truyện cổ tích',
@@ -839,6 +847,7 @@ async function seedData() {
           metaTitle: 'Truyện cổ tích Việt Nam',
           metaDescription: 'Tuyển tập truyện cổ tích Việt Nam',
           metaKeywords: 'truyen co tich, sach tre em',
+          status: ProductStatus.ACTIVE,
         },
         {
           name: 'Áo thun nam',
@@ -849,6 +858,7 @@ async function seedData() {
           metaTitle: 'Áo thun nam trẻ em',
           metaDescription: 'Áo thun nam trẻ em chất lượng cao',
           metaKeywords: 'ao thun, quan ao tre em',
+          status: ProductStatus.ACTIVE,
         },
         {
           name: 'Máy chơi game cầm tay',
@@ -859,6 +869,7 @@ async function seedData() {
           metaTitle: 'Máy chơi game cầm tay mini',
           metaDescription: 'Máy chơi game cầm tay mini với hơn 400 trò chơi cổ điển',
           metaKeywords: 'game, máy chơi game, đồ điện tử trẻ em',
+          status: ProductStatus.DRAFT,
         },
       ]);
     }
