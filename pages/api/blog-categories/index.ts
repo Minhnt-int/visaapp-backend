@@ -6,9 +6,26 @@ import { cors } from '../../../middleware/cors';
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      // Get query parameters
-      const { name, page = '1', limit = '10' } = req.query;
+      const { id, name, page = '1', limit = '10' } = req.query;
       
+      // Nếu có id, lấy chi tiết của một category
+      if (id) {
+        const category = await BlogCategory.findByPk(Number(id));
+        
+        if (!category) {
+          return res.status(404).json({
+            success: false,
+            message: 'Blog category not found'
+          });
+        }
+        
+        return res.status(200).json({
+          success: true,
+          data: category
+        });
+      }
+      
+      // Nếu không có id, liệt kê tất cả categories với phân trang
       // Parse pagination params
       const pageNum = parseInt(page as string, 10);
       const limitNum = parseInt(limit as string, 10);
@@ -48,6 +65,50 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       return res.status(500).json({
         success: false,
         message: 'Error fetching blog categories',
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
+    }
+  } else if (req.method === 'POST') {
+    try {
+      const { name, slug, avatarUrl } = req.body;
+
+      // Validate required fields
+      if (!name || !slug) {
+        return res.status(400).json({
+          success: false,
+          message: 'Name and slug are required'
+        });
+      }
+
+      // Check if slug already exists
+      const existingCategory = await BlogCategory.findOne({
+        where: { slug }
+      });
+
+      if (existingCategory) {
+        return res.status(400).json({
+          success: false,
+          message: 'Slug already exists'
+        });
+      }
+
+      // Create new category
+      const newCategory = await BlogCategory.create({
+        name,
+        slug,
+        avatarUrl
+      });
+
+      return res.status(201).json({
+        success: true,
+        message: 'Blog category created successfully',
+        data: newCategory
+      });
+    } catch (error) {
+      console.error('Error creating blog category:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error creating blog category',
         error: process.env.NODE_ENV === 'development' ? error : undefined
       });
     }
@@ -110,7 +171,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
     }
   } else {
-    res.setHeader('Allow', ['GET', 'PUT']);
+    res.setHeader('Allow', ['GET', 'POST', 'PUT']);
     return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
   }
 }
