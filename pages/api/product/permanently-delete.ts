@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product } from '../../../model';
+import { Product, ProductItem, Order, OrderItem, OrderStatus } from '../../../model';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import logger from '../../../lib/logger';
+import { Op } from 'sequelize';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'DELETE') {
@@ -21,13 +22,48 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
   try {
     // Kiểm tra xem sản phẩm có tồn tại không
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(id as string);
     
     if (!product) {
       throw new AppError(404, 'Product not found', 'NOT_FOUND');
     }
 
-    // Xóa vĩnh viễn sản phẩm và tất cả các quan hệ liên quan (cascade)
+    // Kiểm tra xem sản phẩm có đang trong đơn hàng nào ở trạng thái pending, shipped, delivered không
+    const activeOrderItems = await OrderItem.findOne({
+      where: {
+        productId: id,
+      },
+      include: [
+        {
+          model: Order,
+          as: 'order',
+          where: {
+            status: {
+              [Op.in]: [OrderStatus.PENDING, OrderStatus.SHIPPED, OrderStatus.DELIVERED]
+            }
+          }
+        }
+      ]
+    });
+
+    if (activeOrderItems) {
+      throw new AppError(
+        400, 
+        'Cannot delete product that is in active orders (pending, shipped, or delivered)', 
+        'VALIDATION_ERROR'
+      );
+    }
+
+    // Xóa các ProductItem liên quan trước
+    await ProductItem.destroy({
+      where: {
+        productId: id
+      }
+    });
+
+    logger.info(`Successfully deleted ProductItems for product with ID: ${id}`);
+
+    // Xóa vĩnh viễn sản phẩm 
     await product.destroy();
 
     logger.info(`Successfully permanently deleted product with ID: ${id}`);

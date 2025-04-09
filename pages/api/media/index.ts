@@ -8,7 +8,7 @@ import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { Op } from 'sequelize';
+import { Op, QueryTypes } from 'sequelize';
 
 export const config = {
   api: {
@@ -127,110 +127,201 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   } 
   // Xử lý POST request - Upload ảnh mới
   else if (req.method === 'POST') {
-    const form = formidable({
-      multiples: true,
-      uploadDir,
-      keepExtensions: true,
-      maxFileSize: 5 * 1024 * 1024, // 5MB
-    });
+    try {
+      // Kiểm tra kết nối database trước khi xử lý upload
+      try {
+        await sequelize.authenticate();
+        logger.info('Database connection verified before upload', { requestId });
+      } catch (dbError) {
+        logger.error('Database connection failed before upload', {
+          requestId,
+          error: dbError instanceof Error ? dbError.message : 'Unknown error'
+        });
+        return res.status(500).json({
+          success: false,
+          message: 'Database connection error, cannot upload media'
+        });
+      }
 
-    return new Promise((resolve, reject) => {
-      form.parse(req, async (err, fields, files) => {
-        if (err) {
-          logger.error('Error parsing form data', {
-            requestId,
-            error: err.message,
-            stack: err.stack
-          });
-          return resolve(res.status(500).json({ success: false, message: 'Error uploading file' }));
-        }
+      const form = formidable({
+        multiples: true,
+        uploadDir,
+        keepExtensions: true,
+        maxFileSize: 5 * 1024 * 1024, // 5MB
+      });
 
-        try {
-          const fileArray = Array.isArray(files.file) ? files.file : [files.file];
-          const uploadedMedia = [];
-
-          for (const file of fileArray) {
-            if (!file) continue;
-
-            // Tạo tên file duy nhất
-            const originalFilename = file.originalFilename || 'unnamed';
-            const fileExt = path.extname(originalFilename);
-            const fileName = `${uuidv4()}${fileExt}`;
-            const finalPath = path.join(uploadDir, fileName);
-
-            // Di chuyển file tạm sang thư mục chính thức
-            fs.renameSync(file.filepath, finalPath);
-
-            // Lấy alt_text từ form nếu có
-            let altTextValue = '';
-            if (fields.altText) {
-              altTextValue = Array.isArray(fields.altText) ? fields.altText[0] : fields.altText;
-            }
-
-            // Xác định loại media (image hoặc video) dựa vào extension hoặc field type
-            let mediaType = 'image'; // Mặc định là image
-            
-            if (fields.type) {
-              // Nếu có trường type được gửi lên
-              const typeValue = Array.isArray(fields.type) ? fields.type[0] : fields.type;
-              if (['image', 'video'].includes(typeValue)) {
-                mediaType = typeValue;
-              }
-            } else {
-              // Tự động xác định dựa trên extension
-              const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'];
-              if (videoExtensions.includes(fileExt.toLowerCase())) {
-                mediaType = 'video';
-              }
-            }
-
-            console.log('Form data fields:', fields);
-            console.log('Alt text value:', altTextValue);
-            console.log('Media type:', mediaType);
-
-            // Lưu thông tin vào database
-            const media = await Media.create({
-              name: originalFilename,
-              path: `/uploads/${fileName}`,
-              type: mediaType,
-              altText: altTextValue,
-            });
-
-            uploadedMedia.push(media);
-
-            logger.info('Media uploaded successfully', {
+      return new Promise((resolve, reject) => {
+        form.parse(req, async (err, fields, files) => {
+          if (err) {
+            logger.error('Error parsing form data', {
               requestId,
-              mediaId: media.id,
-              filename: media.name,
-              path: media.path,
-              type: media.type
+              error: err.message,
+              stack: err.stack
             });
+            return resolve(res.status(500).json({ success: false, message: 'Error uploading file' }));
           }
 
-          return resolve(res.status(201).json({
-            success: true,
-            message: 'Media uploaded successfully',
-            data: uploadedMedia
-          }));
-        } catch (error) {
-          logger.error('Error creating media record', {
-            requestId,
-            error: error instanceof Error ? error.message : 'Unknown error',
-            stack: error instanceof Error ? error.stack : undefined
-          });
-          return resolve(res.status(500).json({ 
-            success: false, 
-            message: 'Error creating media record'
-          }));
-        }
+          try {
+            // Xử lý đối tượng files theo đúng cấu trúc mới của formidable v2
+            const file = files.file;
+            if (!file) {
+              return resolve(res.status(400).json({ 
+                success: false, 
+                message: 'No file uploaded' 
+              }));
+            }
+            
+            const uploadedMedia = [];
+            const fileArray = Array.isArray(file) ? file : [file];
+
+            for (const f of fileArray) {
+              if (!f) continue;
+
+              // Tạo tên file duy nhất
+              const originalFilename = f.originalFilename || 'unnamed';
+              const fileExt = path.extname(originalFilename);
+              const fileName = `${uuidv4()}${fileExt}`;
+              const finalPath = path.join(uploadDir, fileName);
+
+              // Di chuyển file tạm sang thư mục chính thức
+              fs.renameSync(f.filepath, finalPath);
+
+              // Lấy alt_text từ form nếu có
+              let altTextValue = '';
+              if (fields.altText) {
+                altTextValue = Array.isArray(fields.altText) ? fields.altText[0] : fields.altText;
+              }
+
+              // Xác định loại media (image hoặc video) dựa vào extension hoặc field type
+              let mediaType = 'image'; // Mặc định là image
+              
+              if (fields.type) {
+                // Nếu có trường type được gửi lên
+                const typeValue = Array.isArray(fields.type) ? fields.type[0] : fields.type;
+                if (['image', 'video'].includes(typeValue)) {
+                  mediaType = typeValue;
+                }
+              } else {
+                // Tự động xác định dựa trên extension
+                const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.mkv', '.webm'];
+                if (videoExtensions.includes(fileExt.toLowerCase())) {
+                  mediaType = 'video';
+                }
+              }
+
+              // Log thông tin debug
+              logger.info('Preparing to create media record', {
+                requestId,
+                filename: originalFilename,
+                path: `/uploads/${fileName}`,
+                type: mediaType,
+                altText: altTextValue
+              });
+
+              try {
+                // Trực tiếp gọi lệnh SQL để kiểm tra
+                const insertResult = await sequelize.query(
+                  `INSERT INTO media (name, path, type, alt_text, created_at, updated_at) 
+                   VALUES (:name, :path, :type, :altText, NOW(), NOW())`,
+                  {
+                    replacements: {
+                      name: originalFilename,
+                      path: `/uploads/${fileName}`,
+                      type: mediaType,
+                      altText: altTextValue
+                    },
+                    type: QueryTypes.INSERT
+                  }
+                );
+                
+                const mediaId = insertResult[0];
+                logger.info('Media record created with raw SQL', {
+                  requestId,
+                  mediaId,
+                  sql: 'INSERT INTO media completed successfully'
+                });
+                
+                // Lấy bản ghi vừa tạo
+                const mediaRecord = await sequelize.query(
+                  `SELECT id, name, path, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
+                   FROM media WHERE id = :id`,
+                  {
+                    replacements: { id: mediaId },
+                    type: QueryTypes.SELECT,
+                    plain: true
+                  }
+                );
+                
+                uploadedMedia.push(mediaRecord);
+              } catch (sqlError) {
+                logger.error('SQL error creating media record', {
+                  requestId,
+                  error: sqlError instanceof Error ? sqlError.message : 'Unknown SQL error',
+                  stack: sqlError instanceof Error ? sqlError.stack : undefined
+                });
+                
+                // Xóa file đã upload nếu không thể tạo bản ghi
+                try {
+                  fs.unlinkSync(finalPath);
+                  logger.info('Deleted uploaded file due to SQL error', { requestId, path: finalPath });
+                } catch (unlinkError) {
+                  logger.error('Failed to delete file after SQL error', {
+                    requestId,
+                    error: unlinkError instanceof Error ? unlinkError.message : 'Unknown error',
+                    path: finalPath
+                  });
+                }
+                
+                throw sqlError;
+              }
+            }
+
+            if (uploadedMedia.length === 0) {
+              return resolve(res.status(400).json({
+                success: false,
+                message: 'No valid files were processed'
+              }));
+            }
+
+            return resolve(res.status(201).json({
+              success: true,
+              message: 'Media uploaded successfully',
+              data: uploadedMedia
+            }));
+          } catch (error) {
+            logger.error('Error in media upload process', {
+              requestId,
+              error: error instanceof Error ? error.message : 'Unknown error',
+              stack: error instanceof Error ? error.stack : undefined
+            });
+            return resolve(res.status(500).json({ 
+              success: false, 
+              message: 'Error uploading and saving media',
+              error: error instanceof Error ? error.message : 'Unknown error'
+            }));
+          }
+        });
       });
-    });
-  } else {
+    } catch (outerError) {
+      logger.error('Outer error in POST method', {
+        requestId,
+        error: outerError instanceof Error ? outerError.message : 'Unknown error',
+        stack: outerError instanceof Error ? outerError.stack : undefined
+      });
+      return res.status(500).json({
+        success: false,
+        message: 'Server error during upload process',
+        error: outerError instanceof Error ? outerError.message : 'Unknown error'
+      });
+    }
+  } 
+  // Xử lý DELETE request - Xóa media
+  else {
     logger.warn('Invalid method for media endpoint', {
       requestId,
       method: req.method
     });
-    res.setHeader('Allow', ['GET', 'POST']);
+    res.setHeader('Allow', ['GET', 'POST', 'DELETE']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }); 
