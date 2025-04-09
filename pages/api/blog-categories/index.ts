@@ -1,12 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { BlogCategory, Media } from '../../../model';
+import { BlogCategory, BlogCategoryStatus } from '../../../model';
 import { Op } from 'sequelize';
 import { cors } from '../../../middleware/cors';
 
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
-      const { id, name, page = '1', limit = '10' } = req.query;
+      const { id, name, page = '1', limit = '10', status } = req.query;
       
       // Nếu có id, lấy chi tiết của một category
       if (id) {
@@ -37,6 +37,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         where.name = {
           [Op.like]: `%${name}%`
         };
+      }
+
+      // Thêm điều kiện lọc theo status
+      if (status) {
+        if (status === 'all') {
+          // Không áp dụng bộ lọc status
+        } else if (Object.values(BlogCategoryStatus).includes(status as any)) {
+          where.status = status;
+        } else {
+          where.status = BlogCategoryStatus.ACTIVE; // Mặc định lọc theo active
+        }
+      } else {
+        where.status = BlogCategoryStatus.ACTIVE; // Mặc định lọc theo active
       }
 
       // Get total count and paginated results
@@ -96,7 +109,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       const newCategory = await BlogCategory.create({
         name,
         slug,
-        avatarUrl
+        avatarUrl,
+        status: BlogCategoryStatus.DRAFT
       });
 
       return res.status(201).json({
@@ -114,7 +128,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } else if (req.method === 'PUT') {
     try {
-      const { id, name, slug, avatarUrl } = req.body;
+      const { id, name, slug, avatarUrl, status } = req.body;
 
       if (!id) {
         return res.status(400).json({
@@ -149,11 +163,20 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         }
       }
 
+      // Kiểm tra status có hợp lệ không
+      if (status && !Object.values(BlogCategoryStatus).includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid status. Valid values are: ${Object.values(BlogCategoryStatus).join(', ')}`
+        });
+      }
+
       // Cập nhật danh mục
       const updateData: any = {};
       if (name) updateData.name = name;
       if (slug) updateData.slug = slug;
       if (avatarUrl !== undefined) updateData.avatarUrl = avatarUrl;
+      if (status) updateData.status = status;
 
       await category.update(updateData);
 
@@ -170,8 +193,44 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         error: process.env.NODE_ENV === 'development' ? error : undefined
       });
     }
+  } else if (req.method === 'DELETE') {
+    try {
+      const { id } = req.query;
+
+      if (!id) {
+        return res.status(400).json({
+          success: false,
+          message: 'Category ID is required'
+        });
+      }
+
+      // Kiểm tra xem danh mục có tồn tại không
+      const category = await BlogCategory.findByPk(Number(id));
+      if (!category) {
+        return res.status(404).json({
+          success: false,
+          message: 'Blog category not found'
+        });
+      }
+
+      // Xóa danh mục
+      await category.destroy();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Blog category deleted successfully',
+        data: { id: Number(id) }
+      });
+    } catch (error) {
+      console.error('Error deleting blog category:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Error deleting blog category',
+        error: process.env.NODE_ENV === 'development' ? error : undefined
+      });
+    }
   } else {
-    res.setHeader('Allow', ['GET', 'POST', 'PUT']);
+    res.setHeader('Allow', ['GET', 'POST', 'PUT', 'DELETE']);
     return res.status(405).json({ message: `Method ${req.method} Not Allowed` });
   }
 }

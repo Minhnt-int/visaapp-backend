@@ -15,6 +15,20 @@ export const ProductStatus = {
   DELETED: 'deleted'   // Đã xóa
 };
 
+// Định nghĩa enum BlogStatus cho bài viết
+export const BlogStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
+// Định nghĩa enum BlogCategoryStatus cho danh mục bài viết
+export const BlogCategoryStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
 // Định nghĩa enum OrderStatus
 export const OrderStatus = {
   PENDING: 'pending',
@@ -609,6 +623,7 @@ export interface BlogCategoryAttributes {
   name: string;
   slug: string;
   avatarUrl?: string;
+  status: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -620,6 +635,7 @@ class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAtt
   public name!: string;
   public slug!: string;
   public avatarUrl!: string;
+  public status!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -643,6 +659,11 @@ BlogCategory.init(
     avatarUrl: {
       type: new DataTypes.STRING(512),
       allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(BlogCategoryStatus)),
+      allowNull: false,
+      defaultValue: BlogCategoryStatus.ACTIVE,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -685,6 +706,7 @@ export interface BlogPostAttributes {
   viewCount?: number;
   blogCategoryId: number;
   avatarUrl?: string;
+  status: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -704,6 +726,7 @@ class BlogPost extends Model<BlogPostAttributes, BlogPostCreationAttributes> imp
   public viewCount!: number;
   public blogCategoryId!: number;
   public avatarUrl!: string;
+  public status!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -759,6 +782,11 @@ BlogPost.init(
     avatarUrl: {
       type: new DataTypes.STRING(512),
       allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(BlogStatus)),
+      allowNull: false,
+      defaultValue: BlogStatus.ACTIVE,
     },
     createdAt: {
       type: DataTypes.DATE,

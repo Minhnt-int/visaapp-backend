@@ -3,6 +3,7 @@ const bcrypt = require('bcryptjs');
 require('dotenv').config();
 const fs = require('fs');
 const path = require('path');
+const moment = require('moment');
 
 // Đọc tham số từ dòng lệnh
 const args = process.argv.slice(2);
@@ -63,6 +64,13 @@ const OrderStatus = {
 
 // Định nghĩa ProductStatus
 const ProductStatus = {
+  DRAFT: 'draft',
+  ACTIVE: 'active',
+  DELETED: 'deleted'
+};
+
+// Định nghĩa BlogStatus
+const BlogStatus = {
   DRAFT: 'draft',
   ACTIVE: 'active',
   DELETED: 'deleted'
@@ -1098,18 +1106,22 @@ async function seedData() {
         {
           name: 'Tin tức',
           slug: 'tin-tuc',
+          status: 'active',
         },
         {
           name: 'Khuyến mãi',
           slug: 'khuyen-mai',
+          status: 'active',
         },
         {
           name: 'Hướng dẫn',
           slug: 'huong-dan',
+          status: 'active',
         },
         {
           name: 'Review sản phẩm',
           slug: 'review-san-pham',
+          status: 'active',
         }
       ]);
       console.log(`- Đã tạo ${blogCategories.length} danh mục blog.`);
@@ -1120,7 +1132,9 @@ async function seedData() {
       console.log('Cập nhật avatarUrl cho danh mục blog...');
       await Promise.all([
         blogCategories[0].update({ avatarUrl: mediaEntries[10].path }), // Tin tức -> blog_category_1
-        blogCategories[1].update({ avatarUrl: mediaEntries[11].path })  // Khuyến mãi -> blog_category_2
+        blogCategories[1].update({ avatarUrl: mediaEntries[11].path }),  // Khuyến mãi -> blog_category_2
+        blogCategories[2].update({ avatarUrl: mediaEntries[12].path }),  // Hướng dẫn -> blog_category_3
+        blogCategories[3].update({ avatarUrl: mediaEntries[13].path })  // Review sản phẩm -> blog_category_4
       ]);
       console.log('- Đã cập nhật avatarUrl cho danh mục blog.');
     }
@@ -1175,7 +1189,9 @@ async function seedData() {
       if (existingBlogPosts.length >= 2 && mediaEntries.length >= 14) {
         await Promise.all([
           existingBlogPosts[0].update({ avatarUrl: mediaEntries[12].path }), // Bài viết 1 -> blog_post_1
-          existingBlogPosts[1].update({ avatarUrl: mediaEntries[13].path })  // Bài viết 2 -> blog_post_2
+          existingBlogPosts[1].update({ avatarUrl: mediaEntries[13].path }),  // Bài viết 2 -> blog_post_2
+          existingBlogPosts[2].update({ avatarUrl: mediaEntries[14].path }),  // Bài viết 3 -> blog_post_3
+          existingBlogPosts[3].update({ avatarUrl: mediaEntries[15].path })  // Bài viết 4 -> blog_post_4
         ]);
         console.log('- Đã cập nhật avatarUrl cho bài viết blog.');
       } else {

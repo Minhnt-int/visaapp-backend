@@ -72,6 +72,20 @@ const ProductStatus = {
   DELETED: 'deleted'   // Đã xóa
 };
 
+// Định nghĩa enum BlogStatus
+const BlogStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
+// Định nghĩa enum BlogCategoryStatus
+const BlogCategoryStatus = {
+  DRAFT: 'draft',      // Nháp
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
 // Định nghĩa enum OrderStatus
 const OrderStatus = {
   PENDING: 'pending',
@@ -304,6 +318,11 @@ const BlogCategory = sequelize.define('BlogCategory', {
     type: new DataTypes.STRING(512),
     allowNull: true,
   },
+  status: {
+    type: DataTypes.ENUM(...Object.values(BlogCategoryStatus)),
+    allowNull: false,
+    defaultValue: BlogCategoryStatus.ACTIVE,
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -384,6 +403,11 @@ const BlogPost = sequelize.define('BlogPost', {
   avatarUrl: {
     type: new DataTypes.STRING(512),
     allowNull: true,
+  },
+  status: {
+    type: DataTypes.ENUM(...Object.values(BlogStatus)),
+    allowNull: false,
+    defaultValue: BlogStatus.ACTIVE,
   },
   createdAt: {
     type: DataTypes.DATE,
