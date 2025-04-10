@@ -190,13 +190,9 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       SELECT 
         p.id, 
         p.name, 
-        p.description, 
         p.shortDescription, 
         p.categoryId, 
         p.slug, 
-        p.metaTitle, 
-        p.metaDescription, 
-        p.metaKeywords,
         p.avatarUrl,
         p.status
       FROM 
@@ -235,20 +231,47 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         return;
       }
       
-      // // Handle categories
-      // const categories = await ProductCategory.findAll({
-      //   where: { id: { [Op.in]: productsWithImages.map((p: any) => p.categoryId).filter(Boolean) } },
-      //   raw: true
-      // });
+      // Lấy danh sách ID của tất cả sản phẩm đã tìm thấy
+      const productIds = productsWithImages.map((p: any) => p.id);
       
-      // const categoryMap = new Map();
-      // categories.forEach(cat => categoryMap.set(cat.id, cat));
+      // Truy vấn thông tin ProductItem cho các sản phẩm
+      const productItemsQuery = `
+        SELECT * FROM product_items 
+        WHERE productId IN (${productIds.join(',')})
+      `;
+      const [productItemsResult] = await sequelize.query(productItemsQuery);
+      
+      // Tạo map để nhóm các item theo productId
+      const productItemsMap = new Map();
+      Array.isArray(productItemsResult) && productItemsResult.forEach((item: any) => {
+        if (!productItemsMap.has(item.productId)) {
+          productItemsMap.set(item.productId, []);
+        }
+        productItemsMap.get(item.productId).push(item);
+      });
+      
+      // Truy vấn thông tin ProductMedia cho các sản phẩm
+      const productMediaQuery = `
+        SELECT * FROM product_media 
+        WHERE productId IN (${productIds.join(',')})
+      `;
+      const [productMediaResult] = await sequelize.query(productMediaQuery);
+      
+      // Tạo map để nhóm các media theo productId
+      const productMediaMap = new Map();
+      Array.isArray(productMediaResult) && productMediaResult.forEach((media: any) => {
+        if (!productMediaMap.has(media.productId)) {
+          productMediaMap.set(media.productId, []);
+        }
+        productMediaMap.get(media.productId).push(media);
+      });
       
       // Prepare the final response
       const productsWithDetails = productsWithImages.map((product: any) => {
         return {
           ...product,
-          // No need to transform avatarUrl since it's already a URL
+          items: productItemsMap.get(product.id) || [],
+          media: productMediaMap.get(product.id) || [],
         };
       });
       
