@@ -69,7 +69,9 @@ export type CreateProductBody = {
   items?: any[];
   media?: { 
     type: 'image' | 'video'; 
-    url: string;
+    url?: string;
+    path?: string;
+    mediaId?: number;
   }[];
 };
 
@@ -176,15 +178,54 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         mediaCount: media.length 
       });
 
-      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; url: string }) => {
-        return ProductMedia.create({
-          productId: newProduct.id,
-          type: mediaItem.type,
-          url: mediaItem.url
-        });
+      const mediaPromises = media.map((mediaItem: any) => {
+        // Chỉ sử dụng url từ payload hoặc lấy từ url của media nếu đó là đối tượng media hoàn chỉnh
+        let mediaUrl;
+        
+        if (mediaItem.url) {
+          mediaUrl = mediaItem.url;
+        } else if (mediaItem.media && mediaItem.media.url) {
+          mediaUrl = mediaItem.media.url;
+        } else if (mediaItem.media && mediaItem.media.path) {
+          // Hỗ trợ cả trường hợp dữ liệu cũ vẫn sử dụng path
+          mediaUrl = mediaItem.media.path;
+        }
+        
+        if (!mediaUrl) {
+          logger.warn('Media item without url or path, skipping', { mediaItem });
+          return Promise.resolve(null);
+        }
+        
+        // Kiểm tra nếu có mediaId, đảm bảo nó tồn tại trong bảng Media
+        let mediaId = mediaItem.mediaId || (mediaItem.media && mediaItem.media.id);
+        
+        if (mediaId) {
+          return Media.findByPk(mediaId).then(existingMedia => {
+            if (!existingMedia) {
+              logger.warn(`Media with id ${mediaId} not found, skipping this media item`);
+              return null;
+            }
+            
+            return ProductMedia.create({
+              productId: newProduct.id,
+              type: mediaItem.type || (mediaItem.media && mediaItem.media.type) || 'image',
+              url: mediaUrl,
+              mediaId: mediaId
+            });
+          });
+        } else {
+          return ProductMedia.create({
+            productId: newProduct.id,
+            type: mediaItem.type || 'image',
+            url: mediaUrl,
+            mediaId: null
+          });
+        }
       });
 
-      await Promise.all(mediaPromises);
+      // Filter out null promises before awaiting
+      const filteredMediaPromises = mediaPromises.filter(Boolean);
+      await Promise.all(filteredMediaPromises);
       logger.debug('Media files added successfully', {
         productId: newProduct.id,
         mediaCount: media.length
@@ -192,46 +233,89 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     }
 
     // Lấy sản phẩm đầy đủ với items và media
-    const productWithDetails = await Product.findByPk(newProduct.id, {
-      include: [
-        {
-          model: ProductItem,
-          as: 'items'
-        },
-        {
-          model: ProductMedia,
-          as: 'media'
+    const newProductDetails = await Product.findByPk(newProduct.id);
+    
+    if (newProductDetails) {
+      // Lấy thêm thông tin từ các bảng liên quan
+      const category = await ProductCategory.findByPk(newProductDetails.categoryId, {
+        attributes: ['id', 'name', 'slug']
+      });
+      
+      const itemsList = await ProductItem.findAll({
+        where: { productId: newProduct.id }
+      });
+      
+      // Lấy thông tin media
+      const productMedia = await ProductMedia.findAll({
+        where: { productId: newProduct.id },
+        include: [{
+          model: Media,
+          as: 'mediaDetail',
+          attributes: ['id', 'name', 'url', 'type', 'altText', 'createdAt', 'updatedAt']
+        }]
+      });
+      
+      // Tạo danh sách media với thông tin đầy đủ
+      const mediaWithData = productMedia.map(pm => {
+        const media = (pm as any).mediaDetail || {};
+        return {
+          id: (pm as any).id,
+          productId: (pm as any).productId,
+          url: (pm as any).url,
+          type: (pm as any).type,
+          mediaId: (pm as any).mediaId,
+          createdAt: (pm as any).createdAt,
+          updatedAt: (pm as any).updatedAt,
+          media: {
+            id: media.id,
+            name: media.name,
+            url: media.url || media.path,  // Sử dụng url hoặc path (nếu là dữ liệu cũ)
+            type: media.type,
+            altText: media.altText,
+            createdAt: media.createdAt,
+            updatedAt: media.updatedAt
+          }
+        };
+      });
+      
+      // Tạo dữ liệu kết hợp
+      const productWithDetails = {
+        ...newProductDetails.toJSON(),
+        category: category ? category.toJSON() : null,
+        items: itemsList.map(item => item.toJSON()),
+        media: mediaWithData
+      };
+      
+      logger.info('Product creation completed', { 
+        productId: newProduct.id,
+        name: newProduct.name,
+        categoryId: newProduct.categoryId,
+        itemCount: items?.length || 0,
+        mediaCount: media?.length || 0
+      });
+      
+      // Kiểm tra và chuyển đổi trạng thái biến thể
+      for (const item of items || []) {
+        // Chuyển đổi trạng thái từ "active" thành "available" nếu cần
+        if (item.status === 'active') {
+          item.status = ProductItemStatus.AVAILABLE;
         }
-      ]
-    });
-
-    logger.info('Product creation completed', { 
-      productId: newProduct.id,
-      name: newProduct.name,
-      categoryId: newProduct.categoryId,
-      itemCount: items?.length || 0,
-      mediaCount: media?.length || 0
-    });
-
-    // Kiểm tra và chuyển đổi trạng thái biến thể
-    for (const item of items || []) {
-      // Chuyển đổi trạng thái từ "active" thành "available" nếu cần
-      if (item.status === 'active') {
-        item.status = ProductItemStatus.AVAILABLE;
+  
+        // Kiểm tra trạng thái hợp lệ
+        if (!Object.values(ProductItemStatus).includes(item.status)) {
+          return res.status(400).json({
+            message: `Trạng thái sản phẩm không hợp lệ: ${item.status}. Các trạng thái hợp lệ: ${Object.values(ProductItemStatus).join(', ')}`
+          });
+        }
       }
-
-      // Kiểm tra trạng thái hợp lệ
-      if (!Object.values(ProductItemStatus).includes(item.status)) {
-        return res.status(400).json({
-          message: `Trạng thái sản phẩm không hợp lệ: ${item.status}. Các trạng thái hợp lệ: ${Object.values(ProductItemStatus).join(', ')}`
-        });
-      }
+  
+      res.status(201).json({ 
+        success: true,
+        data: productWithDetails
+      });
+    } else {
+      throw new AppError(500, 'Failed to retrieve created product', 'INTERNAL_SERVER_ERROR');
     }
-
-    res.status(201).json({ 
-      success: true,
-      data: productWithDetails
-    });
 
   } catch (error) {
     if (error instanceof UniqueConstraintError) {

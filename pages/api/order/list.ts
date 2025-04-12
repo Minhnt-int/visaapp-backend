@@ -34,7 +34,9 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     page = 1, 
     limit = 10, 
     startDate, 
-    endDate 
+    endDate,
+    sortBy = 'createdAt',
+    sortOrder = 'DESC'
   } = req.query;
 
   const pageNumber = parseInt(page as string, 10);
@@ -68,13 +70,20 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     };
   }
 
+  // Xác định trường sắp xếp
+  const validSortFields = ['id', 'createdAt', 'updatedAt', 'totalAmount', 'status'];
+  const sortField = validSortFields.includes(sortBy as string) ? sortBy : 'createdAt';
+  
+  // Xác định hướng sắp xếp
+  const sortDirection = sortOrder === 'ASC' ? 'ASC' : 'DESC';
+
   try {
     // Tìm đơn hàng và đếm tổng số
     const { count, rows } = await Order.findAndCountAll({
       where: whereConditions,
       limit: limitNumber,
       offset,
-      order: [['createdAt', 'DESC']],
+      order: sortField ? [[sortField as string, sortDirection as string]] : [['createdAt', 'DESC']],
     });
 
     res.status(200).json({

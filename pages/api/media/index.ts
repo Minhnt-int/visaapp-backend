@@ -70,7 +70,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
       // Use raw query to ensure consistent field names
       const results = await sequelize.query(
-        `SELECT id, name, path, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
+        `SELECT id, name, url, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
          FROM media 
          ${whereClause} 
          ORDER BY created_at DESC 
@@ -213,7 +213,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
               logger.info('Preparing to create media record', {
                 requestId,
                 filename: originalFilename,
-                path: `/uploads/${fileName}`,
+                url: `/uploads/${fileName}`,
                 type: mediaType,
                 altText: altTextValue
               });
@@ -221,12 +221,12 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
               try {
                 // Trực tiếp gọi lệnh SQL để kiểm tra
                 const insertResult = await sequelize.query(
-                  `INSERT INTO media (name, path, type, alt_text, created_at, updated_at) 
-                   VALUES (:name, :path, :type, :altText, NOW(), NOW())`,
+                  `INSERT INTO media (name, url, type, alt_text, created_at, updated_at) 
+                   VALUES (:name, :url, :type, :altText, NOW(), NOW())`,
                   {
                     replacements: {
                       name: originalFilename,
-                      path: `/uploads/${fileName}`,
+                      url: `/uploads/${fileName}`,
                       type: mediaType,
                       altText: altTextValue
                     },
@@ -243,7 +243,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
                 
                 // Lấy bản ghi vừa tạo
                 const mediaRecord = await sequelize.query(
-                  `SELECT id, name, path, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
+                  `SELECT id, name, url, type, alt_text AS altText, created_at AS createdAt, updated_at AS updatedAt 
                    FROM media WHERE id = :id`,
                   {
                     replacements: { id: mediaId },

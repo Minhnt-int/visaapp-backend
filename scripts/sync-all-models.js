@@ -12,26 +12,12 @@ if (helpMode) {
   Usage: node scripts/sync-all-models.js [OPTIONS]
   
   Options:
-    -f, --force    Xóa tất cả dữ liệu hiện có và tạo lại bảng từ đầu
+    -f, --force    Xóa và tạo lại tất cả bảng, dữ liệu sẽ bị mất
     -h, --help     Hiển thị hướng dẫn sử dụng này
   
-  Không có tham số: Chỉ cập nhật cấu trúc bảng, giữ nguyên dữ liệu
+  Hãy cẩn thận khi sử dụng tùy chọn --force vì nó sẽ xóa hết dữ liệu.
   `);
   process.exit(0);
-}
-
-// Cảnh báo nếu sử dụng force mode
-if (forceMode) {
-  console.log('\x1b[31m%s\x1b[0m', '⚠️  CẢNH BÁO: Chế độ FORCE được kích hoạt!');
-  console.log('\x1b[31m%s\x1b[0m', '⚠️  TẤT CẢ dữ liệu hiện có sẽ bị XÓA và tạo lại bảng từ đầu!');
-  console.log('\x1b[31m%s\x1b[0m', '⚠️  Nhấn Ctrl+C trong vòng 5 giây để hủy bỏ...');
-  
-  // Đợi 5 giây để người dùng có thể hủy
-  const startTime = Date.now();
-  while (Date.now() - startTime < 5000) {
-    // Đợi 5 giây
-  }
-  console.log('\x1b[31m%s\x1b[0m', '⚠️  Đã hết thời gian chờ. Tiếp tục quá trình...');
 }
 
 // Cấu hình kết nối database
@@ -274,6 +260,14 @@ const ProductMedia = sequelize.define('ProductMedia', {
       key: 'id',
     },
   },
+  mediaId: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    allowNull: false,
+    references: {
+      model: 'media',
+      key: 'id',
+    },
+  },
   url: {
     type: new DataTypes.STRING(512),
     allowNull: false,
@@ -298,7 +292,47 @@ const ProductMedia = sequelize.define('ProductMedia', {
   timestamps: true,
 });
 
-// 5. BlogCategory model
+// 5. Media model
+const Media = sequelize.define('Media', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  name: {
+    type: new DataTypes.STRING(255),
+    allowNull: false,
+  },
+  url: {
+    type: new DataTypes.STRING(512),
+    allowNull: false,
+  },
+  type: {
+    type: DataTypes.ENUM('image', 'video'),
+    allowNull: false,
+    defaultValue: 'image',
+  },
+  altText: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+  }
+}, {
+  tableName: 'media',
+  timestamps: true,
+  underscored: true,
+});
+
+// 6. BlogCategory model
 const BlogCategory = sequelize.define('BlogCategory', {
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
@@ -347,7 +381,7 @@ const BlogCategory = sequelize.define('BlogCategory', {
   ],
 });
 
-// 6. BlogPost model
+// 7. BlogPost model
 const BlogPost = sequelize.define('BlogPost', {
   id: {
     type: DataTypes.INTEGER.UNSIGNED,
@@ -433,46 +467,6 @@ const BlogPost = sequelize.define('BlogPost', {
       fields: ['blogCategoryId'],
     },
   ],
-});
-
-// 7. Media model (mới)
-const Media = sequelize.define('Media', {
-  id: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    autoIncrement: true,
-    primaryKey: true,
-  },
-  name: {
-    type: new DataTypes.STRING(255),
-    allowNull: false,
-  },
-  path: {
-    type: new DataTypes.STRING(512),
-    allowNull: false,
-  },
-  type: {
-    type: DataTypes.ENUM('image', 'video'),
-    allowNull: false,
-    defaultValue: 'image',
-  },
-  altText: {
-    type: new DataTypes.STRING(512),
-    allowNull: true,
-  },
-  createdAt: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  },
-  updatedAt: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-  }
-}, {
-  tableName: 'media',
-  timestamps: true,
-  underscored: true,
 });
 
 // 8. User model
@@ -720,6 +714,18 @@ ProductMedia.belongsTo(Product, {
   as: 'product',
 });
 
+// ProductMedia - Media
+ProductMedia.belongsTo(Media, {
+  foreignKey: 'mediaId',
+  as: 'mediaDetail',
+});
+
+Media.hasMany(ProductMedia, {
+  sourceKey: 'id',
+  foreignKey: 'mediaId',
+  as: 'productMedia',
+});
+
 // ProductCategory - Self (Parent/Child)
 ProductCategory.belongsTo(ProductCategory, {
   foreignKey: 'parentId',
@@ -780,108 +786,46 @@ OrderItem.belongsTo(ProductItem, {
   as: 'productItem',
 });
 
-// Đồng bộ hóa models với cơ sở dữ liệu
-async function syncAllModels() {
+// Hàm đồng bộ tất cả models
+async function syncAllModels(force = false) {
   try {
-    // Xác thực kết nối
+    // Kiểm tra kết nối
     await sequelize.authenticate();
     console.log('Kết nối database thành công.');
 
-    // Xác định chế độ đồng bộ (force hoặc alter)
-    const syncMode = forceMode ? { force: true } : { alter: true };
-    const syncTypeText = forceMode ? "XÓA và TẠO LẠI các bảng" : "CẬP NHẬT cấu trúc các bảng";
+    // Đồng bộ models với database
+    const syncOptions = { force };
+    await sequelize.sync(syncOptions);
     
-    console.log(`Bắt đầu ${syncTypeText}...`);
-
-    if (forceMode) {
-      // Tắt tạm thời kiểm tra foreign key để có thể xóa bảng
-      console.log('Tắt tạm thời kiểm tra foreign key...');
-      await sequelize.query('SET FOREIGN_KEY_CHECKS = 0');
-      
-      // Xóa các bảng theo thứ tự (con trước, cha sau) để tránh lỗi constraint
-      console.log('Xóa các bảng hiện có...');
-      
-      console.log('1. Xóa OrderItem...');
-      await OrderItem.drop();
-      
-      console.log('2. Xóa Order...');
-      await Order.drop();
-      
-      console.log('3. Xóa ProductMedia...');
-      await ProductMedia.drop();
-      
-      console.log('4. Xóa ProductItem...');
-      await ProductItem.drop();
-      
-      console.log('5. Xóa BlogPost...');
-      await BlogPost.drop();
-      
-      console.log('6. Xóa Product...');
-      await Product.drop();
-      
-      console.log('7. Xóa ProductCategory...');
-      await ProductCategory.drop();
-      
-      console.log('8. Xóa BlogCategory...');
-      await BlogCategory.drop();
-      
-      console.log('9. Xóa Media...');
-      await Media.drop();
-      
-      console.log('10. Xóa User...');
-      await User.drop();
-      
-      // Bật lại kiểm tra foreign key
-      console.log('Bật lại kiểm tra foreign key...');
-      await sequelize.query('SET FOREIGN_KEY_CHECKS = 1');
-    }
-    
-    // Đồng bộ hóa các model với database
-    console.log('Tạo/cập nhật các bảng...');
-    
-    // Thay đổi thứ tự tạo bảng để đảm bảo các bảng được tạo theo đúng thứ tự phụ thuộc
-    // Media phải được tạo trước vì các bảng khác tham chiếu đến nó
-    console.log('1. Đồng bộ hóa Media...');
-    await Media.sync(syncMode);
-    
-    console.log('2. Đồng bộ hóa User...');
-    await User.sync(syncMode);
-    
-    console.log('3. Đồng bộ hóa ProductCategory...');
-    await ProductCategory.sync(syncMode);
-    
-    console.log('4. Đồng bộ hóa BlogCategory...');
-    await BlogCategory.sync(syncMode);
-    
-    console.log('5. Đồng bộ hóa Product...');
-    await Product.sync(syncMode);
-    
-    console.log('6. Đồng bộ hóa ProductItem...');
-    await ProductItem.sync(syncMode);
-    
-    console.log('7. Đồng bộ hóa ProductMedia...');
-    await ProductMedia.sync(syncMode);
-    
-    console.log('8. Đồng bộ hóa BlogPost...');
-    await BlogPost.sync(syncMode);
-    
-    console.log('9. Đồng bộ hóa Order...');
-    await Order.sync(syncMode);
-    
-    console.log('10. Đồng bộ hóa OrderItem...');
-    await OrderItem.sync(syncMode);
-    
-    console.log(`Đã hoàn thành ${syncTypeText} thành công!`);
-    
-    if (forceMode) {
-      console.log('\x1b[33m%s\x1b[0m', 'Lưu ý: Tất cả dữ liệu đã bị xóa. Bạn cần chạy script seed-data.js để tạo dữ liệu mẫu.');
-    }
+    console.log('Đồng bộ database thành công' + (force ? ' (đã xóa và tạo lại các bảng)' : ''));
+    return true;
   } catch (error) {
-    console.error('Lỗi đồng bộ hóa bảng:', error);
+    console.error('Lỗi khi đồng bộ database:', error);
+    return false;
   } finally {
     await sequelize.close();
   }
 }
 
-// Chạy hàm đồng bộ hóa
-syncAllModels(); 
+// Export the complete module
+module.exports = {
+  syncAllModels,
+  sequelize,
+  models: {
+    Media,
+    User,
+    ProductCategory,
+    BlogCategory,
+    Product,
+    ProductItem,
+    ProductMedia,
+    BlogPost,
+    Order,
+    OrderItem
+  }
+};
+
+// Chạy hàm đồng bộ models nếu được gọi trực tiếp (không phải qua import)
+if (require.main === module) {
+  syncAllModels(forceMode);
+} 

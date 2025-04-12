@@ -46,9 +46,9 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     
     logger.info(`Attempting to delete media with ID: ${mediaId}`, { requestId, mediaId });
 
-    // Lấy thông tin về media (bao gồm path) trước khi xóa
+    // Lấy thông tin về media (bao gồm url) trước khi xóa
     const mediaData = await sequelize.query(
-      `SELECT id, name, path, type FROM media WHERE id = :id`,
+      `SELECT id, name, url, type FROM media WHERE id = :id`,
       {
         replacements: { id: mediaId },
         type: QueryTypes.SELECT,
@@ -65,7 +65,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     }
     
     // Lưu thông tin đường dẫn để xóa file sau
-    const mediaPath = (mediaData as any).path;
+    const mediaUrl = (mediaData as any).url;
     
     // Xóa bản ghi từ database
     await sequelize.query(
@@ -79,17 +79,17 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     logger.info(`Successfully deleted media record with ID: ${mediaId}`, { requestId, mediaId });
     
     // Xóa file sau khi đã xóa bản ghi thành công
-    if (mediaPath && typeof mediaPath === 'string' && mediaPath.trim() !== '') {
+    if (mediaUrl && typeof mediaUrl === 'string' && mediaUrl.trim() !== '') {
       try {
         // Xử lý đường dẫn và lấy tên file
         let filename = '';
         
-        if (mediaPath.includes('/')) {
+        if (mediaUrl.includes('/')) {
           // Lấy phần tử cuối cùng của đường dẫn (tên file)
-          const parts = mediaPath.split('/');
+          const parts = mediaUrl.split('/');
           filename = parts[parts.length - 1];
         } else {
-          filename = mediaPath;
+          filename = mediaUrl;
         }
         
         if (filename) {
@@ -112,7 +112,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         logger.error(`Error deleting file for media ${mediaId}`, {
           requestId,
           mediaId,
-          path: mediaPath,
+          path: mediaUrl,
           error: fileError instanceof Error ? fileError.message : 'Unknown error'
         });
       }
