@@ -283,6 +283,10 @@ const ProductMedia = sequelize.define('ProductMedia', {
     allowNull: false,
     defaultValue: 'image',
   },
+  altText: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
