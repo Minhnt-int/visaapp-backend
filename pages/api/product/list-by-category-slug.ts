@@ -21,7 +21,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   }
 
   try {
-    // Lấy thông tin về danh mục
+    // Get category by slug
     const [categoriesResult] = await sequelize.query(
       'SELECT * FROM product_categories WHERE slug = ?',
       { replacements: [slug] }
@@ -32,22 +32,19 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     }
 
     const category = categoriesResult[0] as any;
-    console.log('Tìm thấy danh mục:', category);
 
-    // Lấy danh mục con
+    // Get subcategories
     const [subcategoriesResult] = await sequelize.query(
       'SELECT * FROM product_categories WHERE parentId = ?',
       { replacements: [category.id] }
     );
 
     const subcategories = Array.isArray(subcategoriesResult) ? subcategoriesResult : [];
-    console.log(`Tìm thấy ${subcategories.length} danh mục con`);
 
-    // Tạo danh sách tất cả ID danh mục (bao gồm cả danh mục chính và danh mục con)
+    // Create list of all category IDs (including main category and subcategories)
     const allCategoryIds = [category.id, ...subcategories.map((sub: any) => sub.id)];
-    console.log('Danh sách categoryId:', allCategoryIds.join(', '));
 
-    // Lấy số lượng sản phẩm ACTIVE
+    // Get count of ACTIVE products
     const [countResult] = await sequelize.query(
       'SELECT COUNT(*) as count FROM products WHERE categoryId IN (?) AND status = ?',
       { replacements: [allCategoryIds, ProductStatus.ACTIVE] }
@@ -56,7 +53,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     const count = (countResult as any[])[0].count;
     const totalPages = Math.ceil(count / itemsPerPage);
 
-    // Lấy các sản phẩm thuộc danh mục này và danh mục con, chỉ lấy sản phẩm ACTIVE
+    // Get products from this category and subcategories, only ACTIVE products
     const [productsResult] = await sequelize.query(
       `SELECT p.*, c.name as categoryName, c.slug as categorySlug 
        FROM products p 
@@ -69,18 +66,17 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     );
 
     const products = Array.isArray(productsResult) ? productsResult : [];
-    console.log(`Tìm thấy ${products.length} sản phẩm ACTIVE thuộc danh mục này và các danh mục con`);
 
-    // Lấy thông tin biến thể và media cho các sản phẩm
+    // Get product items and media
     for (const product of products as any[]) {
-      // Lấy biến thể sản phẩm
+      // Get product items
       const [itemsResult] = await sequelize.query(
         'SELECT * FROM product_items WHERE productId = ?',
         { replacements: [product.id] }
       );
       product.items = Array.isArray(itemsResult) ? itemsResult : [];
       
-      // Lấy media sản phẩm
+      // Get product media
       const [mediaResult] = await sequelize.query(
         'SELECT * FROM product_media WHERE productId = ? LIMIT 5',
         { replacements: [product.id] }
@@ -91,8 +87,6 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     return res.status(200).json({
       message: 'Products retrieved successfully',
       data: {
-        category,
-        subcategories,
         products,
         pagination: {
           total: Number(count),
