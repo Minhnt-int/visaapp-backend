@@ -110,7 +110,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         name,
         slug,
         avatarUrl,
-        status: BlogCategoryStatus.ACTIVE
+        status: BlogCategoryStatus.DRAFT
       });
 
       return res.status(201).json({
@@ -147,7 +147,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       }
 
       // Nếu cập nhật slug, cần kiểm tra slug đã tồn tại chưa
-      if (slug && slug !== (category as any).slug) {
+      if (slug && slug !== category.slug) {
         const existingCategory = await BlogCategory.findOne({
           where: {
             slug,
