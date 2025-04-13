@@ -14,13 +14,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { slug },
         include: [
           {
+            model: Media,
+            as: 'avatar',
+            attributes: ['id', 'path', 'type']
+          },
+          {
             model: ProductMedia,
             as: 'media',
             include: [
               {
                 model: Media,
-                as: 'mediaDetail',
-                attributes: ['id', 'url', 'type', 'altText']
+                as: 'media',
+                attributes: ['id', 'path', 'type', 'altText']
               }
             ]
           },

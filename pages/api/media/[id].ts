@@ -64,7 +64,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       }
 
       // Xóa file vật lý
-      const filePath = path.join(process.cwd(), 'public', media.url);
+      const filePath = path.join(process.cwd(), 'public', media.path);
       
       // Kiểm tra tồn tại file trước khi xóa
       if (fs.existsSync(filePath)) {
@@ -81,7 +81,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         requestId,
         mediaId: media.id,
         filename: media.name,
-        url: media.url
+        path: media.path
       });
 
       return res.status(200).json({

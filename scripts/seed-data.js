@@ -291,14 +291,6 @@ const ProductMedia = sequelize.define('ProductMedia', {
     allowNull: false,
     defaultValue: 'image',
   },
-  mediaId: {
-    type: DataTypes.INTEGER.UNSIGNED,
-    allowNull: false,
-    references: {
-      model: 'media',
-      key: 'id',
-    },
-  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -448,7 +440,7 @@ const Media = sequelize.define('Media', {
     type: new DataTypes.STRING(255),
     allowNull: false,
   },
-  url: {
+  path: {
     type: new DataTypes.STRING(512),
     allowNull: false,
   },
@@ -968,109 +960,109 @@ async function seedData() {
       mediaEntries = await Media.bulkCreate([
         {
           name: 'product_media_1',
-          url: '/uploads/product_1_media_1.jpg',
+          path: '/uploads/product_1_media_1.jpg',
           altText: 'Product 1 media 1',
           type: 'image',
         },
         {
           name: 'product_media_2',
-          url: '/uploads/product_1_media_2.jpg',
+          path: '/uploads/product_1_media_2.jpg',
           altText: 'Product 1 media 2',
           type: 'image',
         },
         {
           name: 'product_media_3',
-          url: '/uploads/product_2_media_3.jpg',
+          path: '/uploads/product_2_media_3.jpg',
           altText: 'Product 2 media 3',
           type: 'image',
         },
         {
           name: 'product_media_4',
-          url: '/uploads/product_3_media_4.jpg',
+          path: '/uploads/product_3_media_4.jpg',
           altText: 'Product 3 media 4',
           type: 'image',
         },
         {
           name: 'product_media_5',
-          url: '/uploads/product_4_media_5.jpg',
+          path: '/uploads/product_4_media_5.jpg',
           altText: 'Product 4 media 5',
           type: 'image',
         },
         {
           name: 'product_media_6',
-          url: '/uploads/product_4_media_6.jpg',
+          path: '/uploads/product_4_media_6.jpg',
           altText: 'Product 4 media 6',
           type: 'video',
         },
         {
           name: 'product_category_1',
-          url: '/uploads/category_toys.jpg',
+          path: '/uploads/category_toys.jpg',
           altText: 'Danh mục đồ chơi',
           type: 'image',
         },
         {
           name: 'product_category_2',
-          url: '/uploads/category_books.jpg',
+          path: '/uploads/category_books.jpg',
           altText: 'Danh mục sách',
           type: 'image',
         },
         {
           name: 'product_category_3',
-          url: '/uploads/category_clothes.jpg',
+          path: '/uploads/category_clothes.jpg',
           altText: 'Danh mục quần áo',
           type: 'image',
         },
         {
           name: 'product_category_4',
-          url: '/uploads/category_electronics.jpg',
+          path: '/uploads/category_electronics.jpg',
           altText: 'Danh mục điện tử',
           type: 'image',
         },
         {
           name: 'blog_category_1',
-          url: '/uploads/blog_category_news.jpg',
+          path: '/uploads/blog_category_news.jpg',
           altText: 'Danh mục tin tức',
           type: 'image',
         },
         {
           name: 'blog_category_2',
-          url: '/uploads/blog_category_promotion.jpg',
+          path: '/uploads/blog_category_promotion.jpg',
           altText: 'Danh mục khuyến mãi',
           type: 'image',
         },
         {
           name: 'blog_post_1',
-          url: '/uploads/blog_post_gift_guide.jpg',
+          path: '/uploads/blog_post_gift_guide.jpg',
           altText: 'Bài viết cách chọn quà',
           type: 'image',
         },
         {
           name: 'blog_post_2',
-          url: '/uploads/blog_post_top_gifts.jpg',
+          path: '/uploads/blog_post_top_gifts.jpg',
           altText: 'Bài viết top quà tặng',
           type: 'image',
         },
         {
           name: 'banner-home-1.jpg',
-          url: '/uploads/banner-home-1.jpg',
+          path: '/uploads/banner-home-1.jpg',
           altText: 'Banner trang chủ khuyến mãi mùa hè',
           type: 'image',
         },
         {
           name: 'banner-home-2.jpg',
-          url: '/uploads/banner-home-2.jpg',
+          path: '/uploads/banner-home-2.jpg',
           altText: 'Banner trang chủ sản phẩm mới',
           type: 'image',
         },
         {
           name: 'logo.png',
-          url: '/uploads/logo.png',
+          path: '/uploads/logo.png',
           altText: 'Logo website',
           type: 'image',
         },
         {
           name: 'product-placeholder.jpg',
-          url: '/uploads/product-placeholder.jpg',
+          path: '/uploads/product-placeholder.jpg',
           altText: 'Hình ảnh mặc định cho sản phẩm',
           type: 'image',
         }
@@ -1082,10 +1074,10 @@ async function seedData() {
     if (products && products.length > 0 && mediaEntries && mediaEntries.length > 0) {
       console.log('Cập nhật avatarUrl cho sản phẩm...');
       await Promise.all([
-        products[0].update({ avatarUrl: mediaEntries[0].url }), // Búp bê Barbie -> product_media_1
-        products[1].update({ avatarUrl: mediaEntries[2].url }), // Truyện cổ tích -> product_media_3
-        products[2].update({ avatarUrl: mediaEntries[3].url }), // Áo thun nam -> product_media_4
-        products[3].update({ avatarUrl: mediaEntries[4].url })  // Máy chơi game -> product_media_5
+        products[0].update({ avatarUrl: mediaEntries[0].path }), // Búp bê Barbie -> product_media_1
+        products[1].update({ avatarUrl: mediaEntries[2].path }), // Truyện cổ tích -> product_media_3
+        products[2].update({ avatarUrl: mediaEntries[3].path }), // Áo thun nam -> product_media_4
+        products[3].update({ avatarUrl: mediaEntries[4].path })  // Máy chơi game -> product_media_5
       ]);
       console.log('- Đã cập nhật avatarUrl cho sản phẩm.');
     }
@@ -1094,10 +1086,10 @@ async function seedData() {
     if (categories && categories.length > 0 && mediaEntries && mediaEntries.length > 0) {
       console.log('Cập nhật avatarUrl cho danh mục sản phẩm...');
       await Promise.all([
-        categories[0].update({ avatarUrl: mediaEntries[6].url }), // Đồ chơi -> product_category_1
-        categories[1].update({ avatarUrl: mediaEntries[7].url }), // Sách -> product_category_2
-        categories[2].update({ avatarUrl: mediaEntries[8].url }), // Quần áo -> product_category_3
-        categories[3].update({ avatarUrl: mediaEntries[9].url })  // Đồ điện tử -> product_category_4
+        categories[0].update({ avatarUrl: mediaEntries[6].path }), // Đồ chơi -> product_category_1
+        categories[1].update({ avatarUrl: mediaEntries[7].path }), // Sách -> product_category_2
+        categories[2].update({ avatarUrl: mediaEntries[8].path }), // Quần áo -> product_category_3
+        categories[3].update({ avatarUrl: mediaEntries[9].path })  // Đồ điện tử -> product_category_4
       ]);
       console.log('- Đã cập nhật avatarUrl cho danh mục sản phẩm.');
     }
@@ -1139,17 +1131,17 @@ async function seedData() {
     if (blogCategories && blogCategories.length > 0 && mediaEntries && mediaEntries.length > 0) {
       console.log('Cập nhật avatarUrl cho danh mục blog...');
       await Promise.all([
-        blogCategories[0].update({ avatarUrl: mediaEntries[10].url }), // Tin tức -> blog_category_1
-        blogCategories[1].update({ avatarUrl: mediaEntries[11].url }),  // Khuyến mãi -> blog_category_2
-        blogCategories[2].update({ avatarUrl: mediaEntries[12].url }),  // Hướng dẫn -> blog_category_3
-        blogCategories[3].update({ avatarUrl: mediaEntries[13].url })  // Review sản phẩm -> blog_category_4
+        blogCategories[0].update({ avatarUrl: mediaEntries[10].path }), // Tin tức -> blog_category_1
+        blogCategories[1].update({ avatarUrl: mediaEntries[11].path }),  // Khuyến mãi -> blog_category_2
+        blogCategories[2].update({ avatarUrl: mediaEntries[12].path }),  // Hướng dẫn -> blog_category_3
+        blogCategories[3].update({ avatarUrl: mediaEntries[13].path })  // Review sản phẩm -> blog_category_4
       ]);
       console.log('- Đã cập nhật avatarUrl cho danh mục blog.');
     }
 
     // Kiểm tra ProductMedia đã tồn tại
     const existingProductMedia = await ProductMedia.findAll({
-      attributes: ['id', 'productId', 'type', 'url', 'mediaId', 'createdAt', 'updatedAt']
+      attributes: ['id', 'productId', 'type', 'url', 'createdAt', 'updatedAt']
     });
     if (existingProductMedia.length === 0 && products && products.length > 0 && mediaEntries && mediaEntries.length > 0) {
       console.log('Tạo dữ liệu ProductMedia mới...');
@@ -1157,38 +1149,32 @@ async function seedData() {
         {
           productId: products[0].id, // Búp bê Barbie
           type: 'image',
-          url: mediaEntries[0].url, // product_media_1
-          mediaId: mediaEntries[0].id // Liên kết với media entry tương ứng
+          url: mediaEntries[0].path // product_media_1
         },
         {
           productId: products[0].id, // Búp bê Barbie
           type: 'image',
-          url: mediaEntries[1].url, // product_media_2
-          mediaId: mediaEntries[1].id // Liên kết với media entry tương ứng
+          url: mediaEntries[1].path // product_media_2
         },
         {
           productId: products[1].id, // Truyện cổ tích
           type: 'image',
-          url: mediaEntries[2].url, // product_media_3
-          mediaId: mediaEntries[2].id // Liên kết với media entry tương ứng
+          url: mediaEntries[2].path // product_media_3
         },
         {
           productId: products[2].id, // Áo thun nam
           type: 'image',
-          url: mediaEntries[3].url, // product_media_4
-          mediaId: mediaEntries[3].id // Liên kết với media entry tương ứng
+          url: mediaEntries[3].path // product_media_4
         },
         {
           productId: products[3].id, // Máy chơi game
           type: 'image',
-          url: mediaEntries[4].url, // product_media_5
-          mediaId: mediaEntries[4].id // Liên kết với media entry tương ứng
+          url: mediaEntries[4].path // product_media_5
         },
         {
           productId: products[3].id, // Máy chơi game
           type: 'video',
-          url: mediaEntries[5].url, // product_media_6
-          mediaId: mediaEntries[5].id // Liên kết với media entry tương ứng
+          url: mediaEntries[5].path // product_media_6
         }
       ]);
       console.log('- Đã tạo dữ liệu ProductMedia.');
@@ -1202,10 +1188,10 @@ async function seedData() {
       // Kiểm tra xem có đủ media entries không
       if (existingBlogPosts.length >= 2 && mediaEntries.length >= 14) {
         await Promise.all([
-          existingBlogPosts[0].update({ avatarUrl: mediaEntries[12].url }), // Bài viết 1 -> blog_post_1
-          existingBlogPosts[1].update({ avatarUrl: mediaEntries[13].url }),  // Bài viết 2 -> blog_post_2
-          existingBlogPosts[2].update({ avatarUrl: mediaEntries[14].url }),  // Bài viết 3 -> blog_post_3
-          existingBlogPosts[3].update({ avatarUrl: mediaEntries[15].url })  // Bài viết 4 -> blog_post_4
+          existingBlogPosts[0].update({ avatarUrl: mediaEntries[12].path }), // Bài viết 1 -> blog_post_1
+          existingBlogPosts[1].update({ avatarUrl: mediaEntries[13].path }),  // Bài viết 2 -> blog_post_2
+          existingBlogPosts[2].update({ avatarUrl: mediaEntries[14].path }),  // Bài viết 3 -> blog_post_3
+          existingBlogPosts[3].update({ avatarUrl: mediaEntries[15].path })  // Bài viết 4 -> blog_post_4
         ]);
         console.log('- Đã cập nhật avatarUrl cho bài viết blog.');
       } else {
@@ -1241,7 +1227,7 @@ async function seedData() {
           publishedAt: new Date(),
           viewCount: 45,
           blogCategoryId: blogCategoryIds[0],
-          avatarUrl: mediaEntries[12].url // blog_post_1
+          avatarUrl: mediaEntries[12].path // blog_post_1
         },
         {
           title: 'Top 10 món quà được yêu thích nhất năm 2023',
@@ -1254,7 +1240,7 @@ async function seedData() {
           publishedAt: new Date(),
           viewCount: 128,
           blogCategoryId: blogCategoryIds[Math.min(blogCategoryIds.length - 1, 3)],
-          avatarUrl: mediaEntries[13].url // blog_post_2
+          avatarUrl: mediaEntries[13].path // blog_post_2
         },
         {
           title: 'Khuyến mãi đặc biệt dịp Tết Dương lịch 2024',
@@ -1403,25 +1389,12 @@ async function seedData() {
     }
 
     console.log('Đã tạo dữ liệu mẫu thành công!');
-    return true;
   } catch (error) {
     console.error('Lỗi khi tạo dữ liệu mẫu:', error);
-    return false;
   } finally {
     await sequelize.close();
   }
 }
 
-// Export the complete module
-module.exports = {
-  seedData,
-  ProductItemStatus,
-  ProductStatus,
-  BlogStatus,
-  OrderStatus,
-};
-
-// Chạy hàm tạo dữ liệu mẫu nếu được gọi trực tiếp (không phải qua import)
-if (require.main === module) {
-  seedData();
-} 
+// Chạy hàm tạo dữ liệu mẫu
+seedData(); 
