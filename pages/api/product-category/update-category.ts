@@ -12,11 +12,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const transaction = await sequelize.transaction();
     
     try {
-      const { id, name, parentId, slug, description } = req.body;
+      const { id, name, parentId, slug, description, avatarUrl } = req.body;
       
       logger.debug('Attempting to update category', { 
         categoryId: id, 
-        updatedFields: { name, parentId, slug, description } 
+        updatedFields: { name, parentId, slug, description, avatarUrl } 
       });
 
       // // Tìm danh mục sản phẩm theo ID
@@ -62,6 +62,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         queryParams.push(parentId);
       }
       
+      if (avatarUrl !== undefined) {
+        updateValues.push('avatarUrl = ?');
+        queryParams.push(avatarUrl);
+      }
+      
       // Thêm updated_at cho câu query
       updateValues.push('updatedAt = NOW()');
       
@@ -97,7 +102,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           name: updatedCategory?.name,
           parentId: updatedCategory?.parentId,
           slug: updatedCategory?.slug,
-          description: updatedCategory?.description
+          description: updatedCategory?.description,
+          avatarUrl: updatedCategory?.avatarUrl
         }
       });
 

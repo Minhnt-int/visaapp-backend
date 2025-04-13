@@ -250,7 +250,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         productItemsMap.get(item.productId).push(item);
       });
       
-      // Truy vấn thông tin ProductMedia cho các sản phẩm
+      // Truy vấn thông tin Productpm cho các sản phẩm
       const productMediaQuery = `
         SELECT * FROM product_media 
         WHERE productId IN (${productIds.join(',')})

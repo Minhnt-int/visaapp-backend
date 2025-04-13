@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductCategory, Media, ProductMedia } from '../../../model';
+import { Product, ProductCategory, ProductMedia } from '../../../model';
 import moment from 'moment-timezone';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import logger from '../../../lib/logger';
@@ -17,7 +17,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     const { 
       id, name, description, shortDescription, categoryId, slug, 
       metaTitle, metaDescription, metaKeywords,
-      avatarUrl
+      avatarUrl, media
     } = req.body;
 
     logger.debug('Updating product', { id, name, categoryId, avatarUrl });
@@ -51,6 +51,45 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     // Cập nhật sản phẩm
     await product.update(updateFields);
 
+    // Cập nhật media nếu có
+    if (media && Array.isArray(media)) {
+      logger.debug('Updating product media', { 
+        productId: id,
+        mediaCount: media.length 
+      });
+
+      // Xử lý từng media
+      for (const mediaItem of media) {
+        if (mediaItem.id) {
+          // Cập nhật media hiện có
+          const existingMedia = await ProductMedia.findOne({
+            where: { id: mediaItem.id, productId: id }
+          });
+
+          if (existingMedia) {
+            await existingMedia.update({
+              type: mediaItem.type || existingMedia.type,
+              url: mediaItem.url || existingMedia.url,
+              altText: mediaItem.altText
+            });
+            logger.debug('Updated existing media', { 
+              mediaId: existingMedia.id,
+              productId: id
+            });
+          }
+        } else {
+          // Thêm media mới
+          await ProductMedia.create({
+            productId: id,
+            type: mediaItem.type,
+            url: mediaItem.url,
+            altText: mediaItem.altText
+          });
+          logger.debug('Added new media', { productId: id });
+        }
+      }
+    }
+
     // Trả về sản phẩm với dữ liệu đã cập nhật
     const updatedProduct = await Product.findByPk(id, {
       include: [
@@ -58,6 +97,11 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
           model: ProductCategory,
           as: 'category',
           attributes: ['id', 'name', 'slug']
+        },
+        {
+          model: ProductMedia,
+          as: 'media',
+          attributes: ['id', 'url', 'type', 'altText']
         }
       ]
     });

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductMedia, ProductItem, Media } from '../../../model';
+import { Product, ProductMedia, ProductItem } from '../../../model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
@@ -14,20 +14,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         where: { slug },
         include: [
           {
-            model: Media,
-            as: 'avatar',
-            attributes: ['id', 'path', 'type']
-          },
-          {
             model: ProductMedia,
             as: 'media',
-            include: [
-              {
-                model: Media,
-                as: 'media',
-                attributes: ['id', 'path', 'type', 'altText']
-              }
-            ]
+            attributes: ['id', 'url', 'type', 'altText']
           },
           {
             model: ProductItem,

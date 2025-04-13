@@ -291,6 +291,10 @@ const ProductMedia = sequelize.define('ProductMedia', {
     allowNull: false,
     defaultValue: 'image',
   },
+  altText: {
+    type: new DataTypes.STRING(512),
+    allowNull: true,
+  },
   createdAt: {
     type: DataTypes.DATE,
     allowNull: false,
@@ -696,18 +700,6 @@ OrderItem.belongsTo(Product, {
 OrderItem.belongsTo(ProductItem, {
   foreignKey: 'productItemId',
   as: 'productItem',
-});
-
-// ProductMedia - Media
-ProductMedia.belongsTo(Media, {
-  foreignKey: 'mediaId',
-  as: 'media',
-});
-
-Media.hasMany(ProductMedia, {
-  sourceKey: 'id',
-  foreignKey: 'mediaId',
-  as: 'productMedia',
 });
 
 // Hàm tạo dữ liệu mẫu
@@ -1149,32 +1141,38 @@ async function seedData() {
         {
           productId: products[0].id, // Búp bê Barbie
           type: 'image',
-          url: mediaEntries[0].path // product_media_1
+          url: mediaEntries[0].path, // product_media_1
+          altText: mediaEntries[0].altText
         },
         {
           productId: products[0].id, // Búp bê Barbie
           type: 'image',
-          url: mediaEntries[1].path // product_media_2
+          url: mediaEntries[1].path, // product_media_2
+          altText: mediaEntries[1].altText
         },
         {
           productId: products[1].id, // Truyện cổ tích
           type: 'image',
-          url: mediaEntries[2].path // product_media_3
+          url: mediaEntries[2].path, // product_media_3
+          altText: mediaEntries[2].altText
         },
         {
           productId: products[2].id, // Áo thun nam
           type: 'image',
-          url: mediaEntries[3].path // product_media_4
+          url: mediaEntries[3].path, // product_media_4
+          altText: mediaEntries[3].altText
         },
         {
           productId: products[3].id, // Máy chơi game
           type: 'image',
-          url: mediaEntries[4].path // product_media_5
+          url: mediaEntries[4].path, // product_media_5
+          altText: mediaEntries[4].altText
         },
         {
           productId: products[3].id, // Máy chơi game
           type: 'video',
-          url: mediaEntries[5].path // product_media_6
+          url: mediaEntries[5].path, // product_media_6
+          altText: mediaEntries[5].altText
         }
       ]);
       console.log('- Đã tạo dữ liệu ProductMedia.');

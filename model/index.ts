@@ -298,6 +298,7 @@ export interface ProductMediaAttributes {
   productId: number;
   url: string;
   type: string;
+  altText?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -310,6 +311,7 @@ class ProductMedia extends Model<ProductMediaAttributes, ProductMediaCreationAtt
   public productId!: number;
   public url!: string;
   public type!: string;
+  public altText!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -333,6 +335,10 @@ ProductMedia.init(
       type: DataTypes.ENUM('image', 'video'),
       allowNull: false,
       defaultValue: 'image',
+    },
+    altText: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
     },
     createdAt: {
       type: DataTypes.DATE,

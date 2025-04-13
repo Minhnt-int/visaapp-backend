@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import sequelize from '../../../lib/db';
 import { Op } from 'sequelize';
-import { Product, ProductCategory, ProductItem, ProductMedia, ProductStatus, ProductItemStatus, Media } from '../../../model';
+import { Product, ProductCategory, ProductItem, ProductMedia, ProductStatus, ProductItemStatus } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
@@ -70,6 +70,7 @@ export type CreateProductBody = {
   media?: { 
     type: 'image' | 'video'; 
     url: string;
+    altText?: string;
   }[];
 };
 
@@ -176,11 +177,12 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         mediaCount: media.length 
       });
 
-      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; url: string }) => {
+      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; url: string; altText?: string }) => {
         return ProductMedia.create({
           productId: newProduct.id,
           type: mediaItem.type,
-          url: mediaItem.url
+          url: mediaItem.url,
+          altText: mediaItem.altText
         });
       });
 
