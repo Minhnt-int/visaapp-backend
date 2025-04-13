@@ -6,17 +6,28 @@ import sequelize from '../../../lib/db';
 import { QueryTypes } from 'sequelize';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Thiết lập CORS headers
+  res.setHeader('Access-Control-Allow-Credentials', 'true');
+  res.setHeader('Access-Control-Allow-Origin', 'http://localhost:3002');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization');
+
+  // Xử lý OPTIONS request (preflight)
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   await connectToDatabase();
 
   if (req.method === 'PUT') {
     const transaction = await sequelize.transaction();
     
     try {
-      const { id, name, parentId, slug, description } = req.body;
+      const { id, name, parentId, slug, description, avatarUrl } = req.body;
       
       logger.debug('Attempting to update category', { 
         categoryId: id, 
-        updatedFields: { name, parentId, slug, description } 
+        updatedFields: { name, parentId, slug, description, avatarUrl } 
       });
 
       // // Tìm danh mục sản phẩm theo ID
@@ -62,6 +73,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         queryParams.push(parentId);
       }
       
+      if (avatarUrl !== undefined) {
+        updateValues.push('avatarUrl = ?');
+        queryParams.push(avatarUrl);
+      }
+      
       // Thêm updated_at cho câu query
       updateValues.push('updatedAt = NOW()');
       
@@ -94,10 +110,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       logger.info('Category updated successfully', { 
         categoryId: id,
         updatedValues: {
-          name: updatedCategory?.name,
-          parentId: updatedCategory?.parentId,
-          slug: updatedCategory?.slug,
-          description: updatedCategory?.description
+          name: (updatedCategory as any)?.name,
+          parentId: (updatedCategory as any)?.parentId,
+          slug: (updatedCategory as any)?.slug,
+          description: (updatedCategory as any)?.description,
+          avatarUrl: (updatedCategory as any)?.avatarUrl
         }
       });
 
@@ -117,7 +134,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res.status(500).json({ message: 'Error updating category', error: (error as any).message });
     }
   } else {
-    res.setHeader('Allow', ['PUT']);
+    res.setHeader('Allow', ['PUT', 'OPTIONS']);
     res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 }
