@@ -636,14 +636,44 @@ export interface BlogCategoryAttributes {
 
 export interface BlogCategoryCreationAttributes extends Optional<BlogCategoryAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAttributes> implements BlogCategoryAttributes {
-  public id!: number;
-  public name!: string;
-  public slug!: string;
-  public avatarUrl!: string;
-  public status!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class BlogCategory extends Model<BlogCategoryAttributes, BlogCategoryCreationAttributes> {
+  // Không khai báo public fields để tránh shadowing getters/setters của Sequelize
+  // public id!: number;
+  // public name!: string;
+  // public slug!: string;
+  // public avatarUrl!: string;
+  // public status!: string;
+  // public readonly createdAt!: Date;
+  // public readonly updatedAt!: Date;
+
+  // Thay vào đó, sử dụng get để truy cập các thuộc tính
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+
+  public get name(): string {
+    return this.getDataValue('name');
+  }
+
+  public get slug(): string {
+    return this.getDataValue('slug');
+  }
+
+  public get avatarUrl(): string | undefined {
+    return this.getDataValue('avatarUrl');
+  }
+
+  public get status(): string {
+    return this.getDataValue('status');
+  }
+
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 BlogCategory.init(
