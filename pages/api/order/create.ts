@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
+import sequelize from '../../../lib/db';
 import { Product, ProductItem, ProductItemStatus, Order, OrderItem, OrderStatus } from '../../../model';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import moment from 'moment-timezone';
@@ -69,17 +70,41 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     for (const item of items) {
       const { productItemId, quantity } = item;
 
-      // Kiểm tra xem productItem có tồn tại không
-      const productItem = await ProductItem.findByPk(productItemId);
-      if (!productItem) {
+      if (!productItemId) {
+        throw new AppError(400, `Product item ID is required`, 'VALIDATION_ERROR');
+      }
+
+      // Lấy thông tin sản phẩm item bằng SQL trực tiếp
+      console.log(`Finding ProductItem with ID ${productItemId}`);
+      const [productItemsResult] = await sequelize.query(
+        'SELECT * FROM product_items WHERE id = ?',
+        { replacements: [productItemId] }
+      );
+
+      if (!Array.isArray(productItemsResult) || productItemsResult.length === 0) {
         throw new AppError(400, `Product item with ID ${productItemId} not found`, 'NOT_FOUND');
       }
 
-      // Lấy thông tin sản phẩm
-      const product = await Product.findByPk(productItem.productId);
-      if (!product) {
+      const productItem = productItemsResult[0] as any;
+      console.log(`ProductItem found:`, productItem);
+
+      if (!productItem.productId) {
+        throw new AppError(400, `Product ID is missing for product item ${productItemId}`, 'VALIDATION_ERROR');
+      }
+
+      // Lấy thông tin sản phẩm bằng SQL trực tiếp
+      console.log(`Finding Product with ID ${productItem.productId}`);
+      const [productsResult] = await sequelize.query(
+        'SELECT * FROM products WHERE id = ?',
+        { replacements: [productItem.productId] }
+      );
+
+      if (!Array.isArray(productsResult) || productsResult.length === 0) {
         throw new AppError(400, `Product with ID ${productItem.productId} not found`, 'NOT_FOUND');
       }
+
+      const product = productsResult[0] as any;
+      console.log(`Product found:`, product);
 
       // Đảm bảo status đúng với enum ProductItemStatus
       const mappedStatus = mapStatusValue(productItem.status);
@@ -100,7 +125,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         updatedAt: timestamp,
       });
 
-      totalAmount += orderItem.subtotal;
+      totalAmount += productItem.price * (quantity || 1);
       orderItems.push(orderItem);
     }
 
