@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { BlogPost, BlogCategory } from '../../../model';
+import { BlogPost, BlogCategory, BlogStatus } from '../../../model';
 import moment from 'moment-timezone';
 import formidable from 'formidable';
 import logger from '../../../lib/logger';
@@ -47,7 +47,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
     const { 
       title, content, slug, metaTitle, metaDescription, 
-      metaKeywords, author, publishedAt, blogCategoryId, avatarUrl
+      metaKeywords, author, publishedAt, blogCategoryId, avatarUrl, status
     } = fields;
 
     // Log input validation
@@ -56,6 +56,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       title: Array.isArray(title) ? title[0] : title,
       slug: Array.isArray(slug) ? slug[0] : slug,
       blogCategoryId: Array.isArray(blogCategoryId) ? blogCategoryId[0] : blogCategoryId,
+      status: Array.isArray(status) ? status[0] : status,
       hasContent: !!content
     });
 
@@ -99,6 +100,14 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         slug: Array.isArray(slug) ? slug[0] : slug
       });
 
+      // Xác định status từ input hoặc sử dụng giá trị mặc định là DRAFT
+      const statusValue = Array.isArray(status) && status[0] ? status[0] : 
+        (typeof status === 'string' && status ? status : BlogStatus.DRAFT);
+
+      // Validate status value
+      const validStatus = Object.values(BlogStatus).includes(statusValue) ? 
+        statusValue : BlogStatus.DRAFT;
+
       const newBlogPost = await BlogPost.create({
         title: Array.isArray(title) ? title[0] : title || '',
         content: contentStr, // Use content directly without modification
@@ -110,6 +119,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         blogCategoryId: Array.isArray(blogCategoryId) ? parseInt(blogCategoryId[0], 10) : (blogCategoryId ? parseInt(blogCategoryId, 10) : 0),
         avatarUrl: Array.isArray(avatarUrl) && avatarUrl[0] ? avatarUrl[0] : 
           (typeof avatarUrl === 'string' && avatarUrl ? avatarUrl : undefined),
+        status: validStatus,
         publishedAt: publishedAt ? moment(publishedAt).tz('Asia/Ho_Chi_Minh').toDate() : moment().tz('Asia/Ho_Chi_Minh').toDate(),
         createdAt: moment().tz('Asia/Ho_Chi_Minh').toDate(),
         updatedAt: moment().tz('Asia/Ho_Chi_Minh').toDate(),
@@ -119,6 +129,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         requestId,
         blogId: newBlogPost.id,
         title: newBlogPost.title,
+        status: newBlogPost.status,
         categoryId: newBlogPost.blogCategoryId,
         processingTime: Date.now() - startTime
       });
