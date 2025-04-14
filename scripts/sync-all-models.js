@@ -450,7 +450,7 @@ const Media = sequelize.define('Media', {
     type: new DataTypes.STRING(255),
     allowNull: false,
   },
-  path: {
+  url: {
     type: new DataTypes.STRING(512),
     allowNull: false,
   },

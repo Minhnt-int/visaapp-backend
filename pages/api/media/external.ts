@@ -28,15 +28,16 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
 
   try {
     // Lấy dữ liệu từ request body
-    const { name, path, type, altText } = req.body;
+    const { name, url, type, altText } = req.body;
 
     // Validate dữ liệu
-    if (!name || !path) {
-      logger.warn('Missing required fields for external media', {
+    if (!name || !url) {
+      logger.warn('Missing required fields', {
         requestId,
-        body: req.body
+        name,
+        url
       });
-      throw new AppError(400, 'Name and path are required', 'VALIDATION_ERROR');
+      throw new AppError(400, 'Name and url are required', 'VALIDATION_ERROR');
     }
 
     // Kiểm tra type hợp lệ
@@ -51,24 +52,30 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     // Tạo media mới
     const media = await Media.create({
       name,
-      path,
+      url,
       type: type || 'image', // Mặc định là image nếu không được chỉ định
-      altText: altText || '',
+      altText: altText || null,
     });
 
     logger.info('External media added successfully', {
       requestId,
       mediaId: media.id,
       name: media.name,
-      path: media.path,
+      url: media.url,
       type: media.type
     });
 
     // Trả về thông tin media đã tạo
     return res.status(201).json({
       success: true,
-      message: 'External media added successfully',
-      data: media
+      message: 'External media registered successfully',
+      data: {
+        id: media.id,
+        name: media.name,
+        url: media.url,
+        type: media.type,
+        altText: media.altText
+      }
     });
   } catch (error) {
     logger.error('Error adding external media', {

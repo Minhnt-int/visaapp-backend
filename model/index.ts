@@ -869,7 +869,7 @@ BlogCategory.hasMany(BlogPost, {
 export interface MediaAttributes {
   id: number;
   name: string;
-  path: string;
+  url: string;
   type: string;
   altText?: string;
   createdAt?: Date;
@@ -882,7 +882,7 @@ export interface MediaCreationAttributes extends Optional<MediaAttributes, 'id' 
 class Media extends Model<MediaAttributes, MediaCreationAttributes> implements MediaAttributes {
   public id!: number;
   public name!: string;
-  public path!: string;
+  public url!: string;
   public type!: string;
   public altText!: string;
   public readonly createdAt!: Date;
@@ -900,7 +900,7 @@ Media.init(
       type: new DataTypes.STRING(255),
       allowNull: false,
     },
-    path: {
+    url: {
       type: new DataTypes.STRING(512),
       allowNull: false,
     },

@@ -64,7 +64,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       }
 
       // Xóa file vật lý
-      const filePath = path.join(process.cwd(), 'public', media.path);
+      const filePath = path.join(process.cwd(), 'public', media.url);
       
       // Kiểm tra tồn tại file trước khi xóa
       if (fs.existsSync(filePath)) {
@@ -81,12 +81,18 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         requestId,
         mediaId: media.id,
         filename: media.name,
-        path: media.path
+        url: media.url
       });
 
       return res.status(200).json({
         success: true,
-        message: 'Media deleted successfully'
+        message: 'Media deleted successfully',
+        data: {
+          id: media.id,
+          name: media.name,
+          url: media.url,
+          type: media.type
+        }
       });
     } catch (error) {
       logger.error('Error deleting media', {

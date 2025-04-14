@@ -46,17 +46,16 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     
     logger.info(`Attempting to delete media with ID: ${mediaId}`, { requestId, mediaId });
 
-    // Lấy thông tin về media (bao gồm path) trước khi xóa
-    const mediaData = await sequelize.query(
-      `SELECT id, name, path, type FROM media WHERE id = :id`,
+    // Lấy thông tin về media (bao gồm url) trước khi xóa
+    const [mediaResult] = await sequelize.query(
+      `SELECT id, name, url, type FROM media WHERE id = :id`,
       {
         replacements: { id: mediaId },
-        type: QueryTypes.SELECT,
-        plain: true
+        type: QueryTypes.SELECT
       }
     );
     
-    if (!mediaData) {
+    if (!mediaResult) {
       logger.warn(`Media with ID ${mediaId} not found for deletion`, { requestId, mediaId });
       return res.status(404).json({
         success: false,
@@ -65,7 +64,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     }
     
     // Lưu thông tin đường dẫn để xóa file sau
-    const mediaPath = (mediaData as any).path;
+    const mediaUrl = (mediaResult as any).url;
     
     // Xóa bản ghi từ database
     await sequelize.query(
@@ -76,20 +75,26 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       }
     );
     
-    logger.info(`Successfully deleted media record with ID: ${mediaId}`, { requestId, mediaId });
+    logger.info(`Successfully deleted from database`, { 
+      requestId, 
+      mediaId,
+      url: mediaUrl,
+    });
     
     // Xóa file sau khi đã xóa bản ghi thành công
-    if (mediaPath && typeof mediaPath === 'string' && mediaPath.trim() !== '') {
+    if (mediaUrl && typeof mediaUrl === 'string' && mediaUrl.trim() !== '') {
       try {
         // Xử lý đường dẫn và lấy tên file
-        let filename = '';
+        let filename;
         
-        if (mediaPath.includes('/')) {
-          // Lấy phần tử cuối cùng của đường dẫn (tên file)
-          const parts = mediaPath.split('/');
+        // Check if the path contains directory segments
+        if (mediaUrl.includes('/')) {
+          // Handle path with directory segments
+          const parts = mediaUrl.split('/');
           filename = parts[parts.length - 1];
         } else {
-          filename = mediaPath;
+          // Treat path as filename directly
+          filename = mediaUrl;
         }
         
         if (filename) {
@@ -112,7 +117,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         logger.error(`Error deleting file for media ${mediaId}`, {
           requestId,
           mediaId,
-          path: mediaPath,
+          url: mediaUrl,
           error: fileError instanceof Error ? fileError.message : 'Unknown error'
         });
       }
