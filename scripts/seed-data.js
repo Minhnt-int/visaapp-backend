@@ -1386,6 +1386,87 @@ async function seedData() {
       console.log(`- Đã tạo ${orders.length} đơn hàng và ${orders.length} chi tiết đơn hàng.`);
     }
 
+    // Thêm dữ liệu mẫu cho bảng meta_seo
+    console.log('\n--- Thêm dữ liệu cho Meta SEO ---');
+    try {
+      const metaSEOItems = [
+        {
+          pageKey: 'home',
+          pageUrl: '/',
+          title: 'GiftWeb - Trang chủ | Mua quà tặng trực tuyến',
+          description: 'GiftWeb - Cửa hàng quà tặng trực tuyến với nhiều lựa chọn quà tặng độc đáo cho mọi dịp. Mua sắm ngay hôm nay!',
+          keywords: 'quà tặng, gift shop, quà tặng trực tuyến, quà tặng độc đáo, GiftWeb',
+          ogTitle: 'GiftWeb - Cửa hàng quà tặng trực tuyến hàng đầu',
+          ogDescription: 'Khám phá bộ sưu tập quà tặng độc đáo tại GiftWeb. Giao hàng nhanh, nhiều ưu đãi hấp dẫn!',
+          ogImage: '/uploads/banner-home-1.jpg',
+          customHead: '<script type="application/ld+json">{"@context":"https://schema.org","@type":"WebSite","name":"GiftWeb","url":"https://giftweb.vn"}</script>'
+        },
+        {
+          pageKey: 'about',
+          pageUrl: '/about',
+          title: 'Giới thiệu về GiftWeb | Cửa hàng quà tặng trực tuyến',
+          description: 'Tìm hiểu về GiftWeb - Cửa hàng quà tặng trực tuyến với lịch sử phát triển và sứ mệnh mang lại niềm vui qua những món quà ý nghĩa.',
+          keywords: 'về chúng tôi, giới thiệu, GiftWeb, lịch sử, sứ mệnh, quà tặng',
+          ogTitle: 'Giới thiệu về GiftWeb - Câu chuyện của chúng tôi',
+          ogDescription: 'Khám phá câu chuyện đằng sau thương hiệu GiftWeb và sứ mệnh mang lại niềm vui qua những món quà.',
+        },
+        {
+          pageKey: 'contact',
+          pageUrl: '/contact',
+          title: 'Liên hệ với GiftWeb | Cửa hàng quà tặng trực tuyến',
+          description: 'Liên hệ với GiftWeb để được hỗ trợ về đơn hàng, sản phẩm và thông tin khác. Chúng tôi luôn sẵn sàng phục vụ bạn!',
+          keywords: 'liên hệ, contact, GiftWeb, hỗ trợ khách hàng, email, số điện thoại',
+          ogTitle: 'Liên hệ GiftWeb - Chúng tôi luôn sẵn sàng hỗ trợ bạn',
+          ogDescription: 'Liên hệ với đội ngũ hỗ trợ khách hàng của GiftWeb để được giải đáp mọi thắc mắc về sản phẩm và dịch vụ.',
+        },
+        {
+          pageKey: 'blog',
+          pageUrl: '/blog',
+          title: 'Blog GiftWeb | Ý tưởng và cảm hứng về quà tặng',
+          description: 'Khám phá ý tưởng quà tặng, hướng dẫn và tin tức mới nhất về quà tặng tại Blog GiftWeb.',
+          keywords: 'blog, quà tặng, ý tưởng quà tặng, hướng dẫn, cảm hứng, GiftWeb',
+          ogTitle: 'Blog GiftWeb - Nguồn cảm hứng về quà tặng',
+          ogDescription: 'Đọc các bài viết mới nhất về ý tưởng quà tặng, hướng dẫn lựa chọn quà và các xu hướng mới nhất.',
+        }
+      ];
+
+      // Thêm dữ liệu vào bảng meta_seo
+      for (const item of metaSEOItems) {
+        const existingMeta = await sequelize.query(
+          'SELECT id FROM meta_seo WHERE page_key = :pageKey LIMIT 1',
+          {
+            replacements: { pageKey: item.pageKey },
+            type: sequelize.QueryTypes.SELECT
+          }
+        );
+
+        if (existingMeta && existingMeta.length > 0) {
+          console.log(`- Meta SEO cho trang "${item.pageKey}" đã tồn tại`);
+        } else {
+          await sequelize.query(
+            `INSERT INTO meta_seo (
+              page_key, page_url, title, description, keywords, 
+              og_title, og_description, og_image, custom_head, 
+              created_at, updated_at
+            ) VALUES (
+              :pageKey, :pageUrl, :title, :description, :keywords,
+              :ogTitle, :ogDescription, :ogImage, :customHead,
+              NOW(), NOW()
+            )`,
+            {
+              replacements: item,
+              type: sequelize.QueryTypes.INSERT
+            }
+          );
+          console.log(`- Đã thêm Meta SEO cho trang "${item.pageKey}"`);
+        }
+      }
+
+      console.log('- Đã xong Meta SEO!');
+    } catch (error) {
+      console.error('Lỗi khi thêm dữ liệu cho Meta SEO:', error);
+    }
+
     console.log('Đã tạo dữ liệu mẫu thành công!');
   } catch (error) {
     console.error('Lỗi khi tạo dữ liệu mẫu:', error);

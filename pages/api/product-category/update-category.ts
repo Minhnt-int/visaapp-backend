@@ -4,39 +4,38 @@ import { ProductCategory } from '../../../model';
 import logger from '../../../lib/logger';
 import sequelize from '../../../lib/db';
 import { QueryTypes } from 'sequelize';
+import { asyncHandler, AppError } from '../../../lib/error-handler';
+import cors from '../../../lib/cors';
+import { runMiddleware } from '../../../lib/cors';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Áp dụng middleware CORS
+  await runMiddleware(req, res, cors);
+
   await connectToDatabase();
 
-  if (req.method === 'PUT') {
+  if (req.method === 'POST') {
     const transaction = await sequelize.transaction();
     
     try {
       const { id, name, parentId, slug, description, avatarUrl } = req.body;
+      
+      if (!id) {
+        await transaction.rollback();
+        throw new AppError(400, 'Category ID is required', 'VALIDATION_ERROR');
+      }
       
       logger.debug('Attempting to update category', { 
         categoryId: id, 
         updatedFields: { name, parentId, slug, description, avatarUrl } 
       });
 
-      // // Tìm danh mục sản phẩm theo ID
-      // const category = await ProductCategory.findByPk(id, { transaction });
-      // if (!category) {
-      //   logger.warn('Category not found during update attempt', { categoryId: id });
-      //   await transaction.rollback();
-      //   return res.status(404).json({ message: 'Category not found' });
-      // }
-
-      // // Log original values for debugging
-      // logger.debug('Found category to update', { 
-      //   categoryId: id,
-      //   originalValues: {
-      //     name: category.name,
-      //     parentId: category.parentId,
-      //     slug: category.slug,
-      //     description: category.description
-      //   }
-      // });
+      // Kiểm tra danh mục tồn tại
+      const existingCategory = await ProductCategory.findByPk(id);
+      if (!existingCategory) {
+        await transaction.rollback();
+        throw new AppError(404, 'Category not found', 'NOT_FOUND');
+      }
 
       // Xây dựng câu lệnh SQL để cập nhật trực tiếp
       const updateValues = [];
@@ -74,7 +73,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       if (updateValues.length === 1) { // Chỉ có updatedAt
         logger.warn('No fields to update provided', { categoryId: id });
         await transaction.rollback();
-        return res.status(400).json({ message: 'No update fields provided' });
+        throw new AppError(400, 'No update fields provided', 'VALIDATION_ERROR');
       }
       
       // Thêm điều kiện where
@@ -107,7 +106,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         }
       });
 
-      res.status(200).json({ 
+      return res.status(200).json({ 
         message: 'Category updated successfully!', 
         data: updatedCategory,
       });
@@ -116,14 +115,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       await transaction.rollback();
       
       logger.error('Error updating category:', { 
-        error: (error as any).message, 
-        stack: (error as any).stack
+        error: error instanceof Error ? error.message : 'Unknown error', 
+        stack: error instanceof Error ? error.stack : undefined
       });
       
-      res.status(500).json({ message: 'Error updating category', error: (error as any).message });
+      throw error;
     }
   } else {
-    res.setHeader('Allow', ['PUT']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.setHeader('Allow', ['POST', 'OPTIONS']);
+    throw new AppError(405, `Method ${req.method} Not Allowed`, 'METHOD_NOT_ALLOWED');
   }
-}
+});

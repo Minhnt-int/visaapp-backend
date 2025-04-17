@@ -1007,6 +1007,111 @@ User.init(
   }
 );
 
+// MetaSEO Model
+export interface MetaSEOAttributes {
+  id: number;
+  pageKey: string;
+  pageUrl?: string;
+  title: string;
+  description?: string;
+  keywords?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogImage?: string;
+  customHead?: string;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Define interface for creation (id is optional)
+export interface MetaSEOCreationAttributes extends Optional<MetaSEOAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
+
+class MetaSEO extends Model<MetaSEOAttributes, MetaSEOCreationAttributes> implements MetaSEOAttributes {
+  public id!: number;
+  public pageKey!: string;
+  public pageUrl!: string;
+  public title!: string;
+  public description!: string;
+  public keywords!: string;
+  public ogTitle!: string;
+  public ogDescription!: string;
+  public ogImage!: string;
+  public customHead!: string;
+  public readonly createdAt!: Date;
+  public readonly updatedAt!: Date;
+}
+
+MetaSEO.init(
+  {
+    id: {
+      type: DataTypes.INTEGER.UNSIGNED,
+      autoIncrement: true,
+      primaryKey: true,
+    },
+    pageKey: {
+      type: new DataTypes.STRING(255),
+      allowNull: false,
+      unique: true,
+      field: 'page_key',
+    },
+    pageUrl: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+      field: 'page_url',
+    },
+    title: {
+      type: new DataTypes.STRING(255),
+      allowNull: false,
+    },
+    description: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+    },
+    keywords: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+    },
+    ogTitle: {
+      type: new DataTypes.STRING(255),
+      allowNull: true,
+      field: 'og_title',
+    },
+    ogDescription: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+      field: 'og_description',
+    },
+    ogImage: {
+      type: new DataTypes.STRING(512),
+      allowNull: true,
+      field: 'og_image',
+    },
+    customHead: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      field: 'custom_head',
+    },
+    createdAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'created_at',
+    },
+    updatedAt: {
+      type: DataTypes.DATE,
+      allowNull: false,
+      defaultValue: DataTypes.NOW,
+      field: 'updated_at',
+    },
+  },
+  {
+    tableName: 'meta_seo',
+    sequelize,
+    timestamps: true,
+    underscored: true,
+  }
+);
+
 // Other relationships are here
 
-export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media }; 
+export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media, MetaSEO }; 

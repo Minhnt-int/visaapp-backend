@@ -5,8 +5,13 @@ import logger from '../../../../lib/logger';
 import { asyncHandler, AppError } from '../../../../lib/error-handler';
 import fs from 'fs';
 import path from 'path';
+import cors from '../../../../lib/cors';
+import { runMiddleware } from '../../../../lib/cors';
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
+  // Áp dụng middleware CORS
+  await runMiddleware(req, res, cors);
+
   const requestId = req.headers['x-request-id'] || Date.now().toString();
   logger.info('Processing product media delete request', {
     requestId,
@@ -14,12 +19,13 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     url: req.url
   });
 
+  // OPTIONS requests đã được xử lý bởi middleware CORS
   if (req.method !== 'DELETE') {
     logger.warn('Invalid method for product media delete endpoint', {
       requestId,
       method: req.method
     });
-    res.setHeader('Allow', ['DELETE']);
+    res.setHeader('Allow', ['DELETE', 'OPTIONS']);
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
