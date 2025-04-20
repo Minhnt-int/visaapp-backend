@@ -16,53 +16,72 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const itemsPerPage = parseInt(limit as string, 10) || 10;
   const offset = (currentPage - 1) * itemsPerPage;
 
-  if (!slug || typeof slug !== 'string') {
-    return res.status(400).json({ message: 'Slug is required' });
-  }
-
   try {
-    // Get category by slug
-    const [categoriesResult] = await sequelize.query(
-      'SELECT * FROM product_categories WHERE slug = ?',
-      { replacements: [slug] }
-    );
+    let allCategoryIds: any[] = [];
+    let categoryInfo = null;
 
-    if (!Array.isArray(categoriesResult) || categoriesResult.length === 0) {
-      return res.status(404).json({ message: 'Category not found' });
+    // Nếu có slug, lấy sản phẩm theo danh mục cụ thể
+    if (slug && typeof slug === 'string') {
+      // Get category by slug
+      const [categoriesResult] = await sequelize.query(
+        'SELECT * FROM product_categories WHERE slug = ?',
+        { replacements: [slug] }
+      );
+
+      if (!Array.isArray(categoriesResult) || categoriesResult.length === 0) {
+        return res.status(404).json({ message: 'Category not found' });
+      }
+
+      const category = categoriesResult[0] as any;
+      categoryInfo = category;
+
+      // Get subcategories
+      const [subcategoriesResult] = await sequelize.query(
+        'SELECT * FROM product_categories WHERE parentId = ?',
+        { replacements: [category.id] }
+      );
+
+      const subcategories = Array.isArray(subcategoriesResult) ? subcategoriesResult : [];
+
+      // Create list of all category IDs (including main category and subcategories)
+      allCategoryIds = [category.id, ...subcategories.map((sub: any) => sub.id)];
     }
 
-    const category = categoriesResult[0] as any;
+    // Tạo câu truy vấn SQL dựa vào việc có slug hay không
+    let countQuery = 'SELECT COUNT(*) as count FROM products WHERE status = ?';
+    let productsQuery = `
+      SELECT p.*, c.name as categoryName, c.slug as categorySlug 
+      FROM products p 
+      JOIN product_categories c ON p.categoryId = c.id
+      WHERE p.status = ?`;
+    
+    let countReplacements: any[] = [ProductStatus.ACTIVE];
+    let productsReplacements: any[] = [ProductStatus.ACTIVE];
 
-    // Get subcategories
-    const [subcategoriesResult] = await sequelize.query(
-      'SELECT * FROM product_categories WHERE parentId = ?',
-      { replacements: [category.id] }
-    );
+    // Nếu có danh mục cụ thể, thêm điều kiện vào truy vấn
+    if (allCategoryIds.length > 0) {
+      countQuery += ' AND categoryId IN (?)';
+      productsQuery += ` AND p.categoryId IN (${allCategoryIds.join(',')})`;
+      countReplacements.push(allCategoryIds);
+    }
 
-    const subcategories = Array.isArray(subcategoriesResult) ? subcategoriesResult : [];
+    // Hoàn thành câu truy vấn với phân trang
+    productsQuery += ' ORDER BY p.createdAt DESC LIMIT ? OFFSET ?';
+    productsReplacements.push(itemsPerPage, offset);
 
-    // Create list of all category IDs (including main category and subcategories)
-    const allCategoryIds = [category.id, ...subcategories.map((sub: any) => sub.id)];
-
-    // Get count of ACTIVE products
+    // Thực hiện truy vấn đếm số lượng
     const [countResult] = await sequelize.query(
-      'SELECT COUNT(*) as count FROM products WHERE categoryId IN (?) AND status = ?',
-      { replacements: [allCategoryIds, ProductStatus.ACTIVE] }
+      countQuery,
+      { replacements: countReplacements }
     );
     
     const count = (countResult as any[])[0].count;
     const totalPages = Math.ceil(count / itemsPerPage);
 
-    // Get products from this category and subcategories, only ACTIVE products
+    // Thực hiện truy vấn lấy sản phẩm
     const [productsResult] = await sequelize.query(
-      `SELECT p.*, c.name as categoryName, c.slug as categorySlug 
-       FROM products p 
-       JOIN product_categories c ON p.categoryId = c.id
-       WHERE p.categoryId IN (${allCategoryIds.join(',')})
-       AND p.status = ?
-       ORDER BY p.createdAt DESC
-       LIMIT ? OFFSET ?`,
-      { replacements: [ProductStatus.ACTIVE, itemsPerPage, offset] }
+      productsQuery,
+      { replacements: productsReplacements }
     );
 
     const products = Array.isArray(productsResult) ? productsResult : [];
@@ -88,6 +107,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       message: 'Products retrieved successfully',
       data: {
         products,
+        category: categoryInfo,
         pagination: {
           total: Number(count),
           totalPages,
@@ -97,7 +117,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       }
     });
   } catch (error) {
-    console.error('Error:', error);
-    return res.status(500).json({ message: 'Internal server error' });
+    logger.error('Error retrieving products:', error);
+    throw new AppError(500, 'Internal server error', 'SERVER_ERROR');
   }
 }); 

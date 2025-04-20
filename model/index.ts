@@ -1,5 +1,6 @@
 import { Model, DataTypes, Optional } from 'sequelize';
 import sequelize from '../lib/db';
+import MetaJson from './MetaJson';
 
 // Định nghĩa enum ProductItemStatus
 export const ProductItemStatus = {
@@ -1114,4 +1115,4 @@ MetaSEO.init(
 
 // Other relationships are here
 
-export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media, MetaSEO }; 
+export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media, MetaSEO, MetaJson }; 

@@ -755,6 +755,42 @@ const MetaSEO = sequelize.define('MetaSEO', {
   underscored: true,
 });
 
+// 10. MetaJson model
+const MetaJson = sequelize.define('MetaJson', {
+  id: {
+    type: DataTypes.INTEGER.UNSIGNED,
+    autoIncrement: true,
+    primaryKey: true,
+  },
+  pageKey: {
+    type: new DataTypes.STRING(255),
+    allowNull: false,
+    unique: true,
+    field: 'page_key',
+  },
+  metaData: {
+    type: DataTypes.JSON,
+    allowNull: false,
+    field: 'meta_data',
+  },
+  createdAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+    field: 'created_at',
+  },
+  updatedAt: {
+    type: DataTypes.DATE,
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
+    field: 'updated_at',
+  },
+}, {
+  tableName: 'meta_json',
+  timestamps: true,
+  underscored: true,
+});
+
 // Thiết lập quan hệ giữa các models
 // Product - ProductCategory
 Product.belongsTo(ProductCategory, {
@@ -897,10 +933,16 @@ async function syncAllModels() {
       console.log('8. Xóa BlogCategory...');
       await BlogCategory.drop();
       
-      console.log('9. Xóa Media...');
+      console.log('9. Xóa MetaSEO...');
+      await MetaSEO.drop();
+      
+      console.log('10. Xóa MetaJson...');
+      await MetaJson.drop();
+      
+      console.log('11. Xóa Media...');
       await Media.drop();
       
-      console.log('10. Xóa User...');
+      console.log('12. Xóa User...');
       await User.drop();
       
       // Bật lại kiểm tra foreign key
@@ -942,6 +984,12 @@ async function syncAllModels() {
     
     console.log('10. Đồng bộ hóa OrderItem...');
     await OrderItem.sync(syncMode);
+    
+    console.log('11. Đồng bộ hóa MetaSEO...');
+    await MetaSEO.sync(syncMode);
+    
+    console.log('12. Đồng bộ hóa MetaJson...');
+    await MetaJson.sync(syncMode);
     
     console.log(`Đã hoàn thành ${syncTypeText} thành công!`);
     

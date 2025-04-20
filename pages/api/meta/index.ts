@@ -22,7 +22,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   // GET: Lấy danh sách hoặc chi tiết meta SEO
   if (req.method === 'GET') {
     try {
-      const { pageKey } = req.query;
+      const { pageKey, pageUrl } = req.query;
 
       // Nếu có pageKey, lấy chi tiết cho trang đó
       if (pageKey) {
@@ -44,8 +44,29 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
           success: true,
           data: metaData
         });
+      }
+      // Nếu có pageUrl, lấy chi tiết cho URL đó
+      else if (pageUrl) {
+        logger.debug(`Getting meta SEO data for URL: ${pageUrl}`, { requestId, pageUrl });
+        
+        const metaData = await MetaSEO.findOne({ 
+          where: { pageUrl: pageUrl as string } 
+        });
+        
+        if (!metaData) {
+          logger.warn(`Meta SEO data not found for URL: ${pageUrl}`, { requestId, pageUrl });
+          return res.status(404).json({
+            success: false,
+            message: 'Meta SEO data not found'
+          });
+        }
+
+        return res.status(200).json({
+          success: true,
+          data: metaData
+        });
       } 
-      // Không có pageKey, lấy tất cả
+      // Không có pageKey và pageUrl, lấy tất cả
       else {
         logger.debug('Getting all meta SEO data', { requestId });
         
@@ -70,7 +91,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     try {
       const {
         pageKey, pageUrl, title, description, keywords,
-        ogTitle, ogDescription, ogImage, customHead
+        ogTitle, ogDescription, ogImage, customHead, metaJson
       } = req.body;
 
       // Kiểm tra pageKey bắt buộc
@@ -102,7 +123,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         ogTitle,
         ogDescription,
         ogImage,
-        customHead
+        customHead,
       });
 
       logger.info(`Created new meta SEO for "${pageKey}"`, {
@@ -134,7 +155,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     try {
       const {
         pageKey, pageUrl, title, description, keywords,
-        ogTitle, ogDescription, ogImage, customHead
+        ogTitle, ogDescription, ogImage, customHead, metaJson
       } = req.body;
 
       // Kiểm tra pageKey bắt buộc
@@ -166,6 +187,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       if (ogDescription !== undefined) updateData.ogDescription = ogDescription;
       if (ogImage !== undefined) updateData.ogImage = ogImage;
       if (customHead !== undefined) updateData.customHead = customHead;
+      if (metaJson !== undefined) updateData.metaJson = metaJson;
 
       // Nếu không có trường nào được cập nhật
       if (Object.keys(updateData).length === 0) {
