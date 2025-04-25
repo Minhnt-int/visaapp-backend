@@ -11,8 +11,13 @@ interface DecodedToken {
   exp: number;
 }
 
+// Extend NextApiRequest to include the user property
+export interface AuthenticatedRequest extends NextApiRequest {
+  user?: DecodedToken; // Use optional chaining or define it based on your logic
+}
+
 export function verifyToken(handler: any) {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
+  return async (req: AuthenticatedRequest, res: NextApiResponse) => {
     try {
       const authHeader = req.headers.authorization;
       
@@ -36,7 +41,7 @@ export function verifyToken(handler: any) {
 }
 
 export function verifyAdmin(handler: any) {
-  return async (req: NextApiRequest, res: NextApiResponse) => {
+  return async (req: AuthenticatedRequest, res: NextApiResponse) => {
     try {
       const authHeader = req.headers.authorization;
       

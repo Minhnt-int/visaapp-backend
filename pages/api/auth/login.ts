@@ -26,39 +26,39 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const { username, password } = req.body;
+  const { email, password } = req.body;
 
   // Log input validation
   logger.debug('Validating login input', {
     requestId,
-    username: username ? '(provided)' : '(missing)',
+    email: email ? '(provided)' : '(missing)',
     password: password ? '(provided)' : '(missing)'
   });
 
-  if (!username || !password) {
+  if (!email || !password) {
     logger.warn('Invalid login input', {
       requestId,
       missingFields: {
-        username: !username,
+        email: !email,
         password: !password
       }
     });
-    return res.status(400).json({ message: 'Username and password are required' });
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
   // Find user
   logger.debug('Finding user for login', {
     requestId,
-    username
+    email
   });
 
   const startTime = Date.now();
-  const user = await User.findOne({ where: { username } });
+  const user = await User.findOne({ where: { email } });
 
   if (!user) {
     logger.warn('Login failed - user not found', {
       requestId,
-      username,
+      email,
       processingTime: Date.now() - startTime
     });
     return res.status(401).json({ message: 'Invalid credentials' });
@@ -67,7 +67,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   // Verify password
   logger.debug('Verifying password', {
     requestId,
-    username
+    email: user.email
   });
 
   const isValid = await compare(password, user.password);
@@ -75,7 +75,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   if (!isValid) {
     logger.warn('Login failed - invalid password', {
       requestId,
-      username,
+      email: user.email,
       processingTime: Date.now() - startTime
     });
     return res.status(401).json({ message: 'Invalid credentials' });
@@ -84,13 +84,14 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   // Generate JWT token
   logger.debug('Generating JWT token', {
     requestId,
-    username
+    email: user.email
   });
 
   const token = jwt.sign(
     { 
       userId: user.id,
-      username: user.username 
+      email: user.email,
+      role: user.role
     },
     JWT_SECRET,
     { expiresIn: '24h' }
@@ -99,7 +100,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   logger.info('User logged in successfully', {
     requestId,
     userId: user.id,
-    username: user.username,
+    email: user.email,
     processingTime: Date.now() - startTime
   });
 
@@ -108,8 +109,9 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     token,
     user: {
       id: user.id,
-      username: user.username,
-      email: user.email
+      name: user.name,
+      email: user.email,
+      role: user.role
     }
   });
 });

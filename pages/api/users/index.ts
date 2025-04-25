@@ -3,8 +3,9 @@ import { User } from '../../../model';
 import { Op } from 'sequelize';
 import { withCors } from '../cors-middleware';
 import { verifyToken, verifyAdmin } from '../../../middleware/auth';
+import { AuthenticatedRequest } from '../../../middleware/auth';
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
+async function handler(req: AuthenticatedRequest, res: NextApiResponse) {
   if (req.method === 'GET') {
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -49,13 +50,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   return res.status(405).json({ message: 'Method not allowed' });
 }
 
-// Wrap handler với CORS và auth middleware
+// Wrap the core handler with admin verification first
+const adminProtectedHandler = verifyAdmin(handler);
+
+// Define the final API handler that applies CORS
 export default async function apiHandler(req: NextApiRequest, res: NextApiResponse) {
+  // `withCors` expects req, res, and the next function to call
   await withCors(req, res, async () => {
-    await verifyToken(req, res, async () => {
-      await verifyAdmin(req, res, async () => {
-        await handler(req, res);
-      });
-    });
+    // Call the admin-protected handler
+    // Need to cast req to AuthenticatedRequest if handler expects it
+    await adminProtectedHandler(req as AuthenticatedRequest, res);
   });
 } 
