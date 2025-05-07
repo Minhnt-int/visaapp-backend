@@ -2,8 +2,9 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
 import { BlogPost, BlogCategory, BlogStatus } from '../../../model';
 import { Op } from 'sequelize';
+import { cors } from '../../../middleware/cors';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default cors(async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
   
   if (req.method === 'GET') {
@@ -118,4 +119,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   } else {
     return res.status(405).json({ message: 'Method not allowed' });
   }
-} 
+}) 

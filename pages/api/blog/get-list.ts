@@ -4,8 +4,9 @@ import { BlogPost, BlogCategory } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler } from '../../../lib/error-handler';
 import { Op } from 'sequelize';
+import { cors } from '../../../middleware/cors';
 
-export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
+export default cors(asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
   logger.info('Processing blog list request', {
     requestId,
@@ -148,4 +149,4 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     });
     throw error;
   }
-});
+}));
