@@ -33,6 +33,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       category,
       search,
       author,
+      status,
       sortBy = 'publishedAt',
       sortOrder = 'DESC'
     } = req.query;
@@ -45,6 +46,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       category,
       search,
       author,
+      status,
       sortBy,
       sortOrder
     });
@@ -94,6 +96,14 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       logger.debug('Added author filter', {
         requestId,
         author
+      });
+    }
+
+    if (status) {
+      where.status = status;
+      logger.debug('Added status filter', {
+        requestId,
+        status
       });
     }
 
