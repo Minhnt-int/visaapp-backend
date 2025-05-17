@@ -39,6 +39,12 @@ export const OrderStatus = {
   CANCELLED: 'cancelled'
 };
 
+// Định nghĩa enum ProductCategoryStatus cho danh mục sản phẩm
+export const ProductCategoryStatus = {
+  ACTIVE: 'active',    // Hoạt động
+  DELETED: 'deleted'   // Đã xóa
+};
+
 // ProductCategory Model
 export interface ProductCategoryAttributes {
   id: number;
@@ -47,6 +53,7 @@ export interface ProductCategoryAttributes {
   description?: string;
   parentId?: number;
   avatarUrl?: string;
+  status: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -61,6 +68,7 @@ class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCr
   public description!: string;
   public parentId!: number;
   public avatarUrl!: string;
+  public status!: string;
   public readonly createdAt!: Date;
   public readonly updatedAt!: Date;
 }
@@ -92,6 +100,11 @@ ProductCategory.init(
     avatarUrl: {
       type: new DataTypes.STRING(512),
       allowNull: true,
+    },
+    status: {
+      type: DataTypes.ENUM(...Object.values(ProductCategoryStatus)),
+      allowNull: false,
+      defaultValue: ProductCategoryStatus.ACTIVE,
     },
     createdAt: {
       type: DataTypes.DATE,
