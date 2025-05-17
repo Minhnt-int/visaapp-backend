@@ -1,7 +1,7 @@
 // filepath: /Users/duy/nextjs project/web-qua-tang/pages/api/product-category/create-category.ts
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { ProductCategory } from '../../../model';
+import { ProductCategory, ProductCategoryStatus } from '../../../model';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
 import { slugify } from '../../../lib/utils';
@@ -127,6 +127,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       description,
       parentId: parentId || null,
       avatarUrl: avatarUrl || null,
+      status: ProductCategoryStatus.ACTIVE,
     });
 
     logger.info('Category created successfully', {

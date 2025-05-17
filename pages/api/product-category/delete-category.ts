@@ -15,6 +15,9 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   await connectToDatabase();
 
   if (req.method === 'DELETE') {
+    // NOTE: For proper soft delete functionality, please run the SQL migration first:
+    // migrations/add-status-to-product-categories.sql
+    
     const transaction = await sequelize.transaction();
     
     try {
