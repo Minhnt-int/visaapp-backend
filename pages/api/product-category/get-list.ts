@@ -1,6 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { ProductCategory } from '../../../model';
+import { ProductCategory, ProductCategoryStatus } from '../../../model';
 import { Op } from 'sequelize';
 import logger from '../../../lib/logger';
 import { asyncHandler, AppError } from '../../../lib/error-handler';
@@ -27,7 +27,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const startTime = Date.now();
 
   try {
-    const { page = '1', limit = '10', name, parentId, sortBy = 'createdAt', sortOrder = 'DESC' } = req.query;
+    const { page = '1', limit = '10', name, parentId, sortBy = 'createdAt', sortOrder = 'DESC', status } = req.query;
 
     // Log query parameters
     logger.debug('Processing category list parameters', {
@@ -36,6 +36,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       limit,
       name,
       parentId,
+      status,
       sortBy,
       sortOrder
     });
@@ -73,6 +74,30 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       logger.debug('Added parent filter', {
         requestId,
         parentId
+      });
+    }
+
+    // Thêm điều kiện lọc theo status
+    if (status) {
+      // Kiểm tra status hợp lệ
+      const validStatusValues = Object.values(ProductCategoryStatus);
+      if (validStatusValues.includes(status as string)) {
+        where.status = status;
+        logger.debug('Added status filter', {
+          requestId,
+          status
+        });
+      } else {
+        logger.warn('Invalid status value, ignoring filter', {
+          requestId,
+          status
+        });
+      }
+    } else {
+      // Mặc định chỉ lấy các danh mục active nếu không chỉ định status
+      where.status = ProductCategoryStatus.ACTIVE;
+      logger.debug('Using default status filter (active)', {
+        requestId
       });
     }
 
