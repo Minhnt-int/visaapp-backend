@@ -93,12 +93,6 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
           status
         });
       }
-    } else {
-      // Mặc định chỉ lấy các danh mục active nếu không chỉ định status
-      where.status = ProductCategoryStatus.ACTIVE;
-      logger.debug('Using default status filter (active)', {
-        requestId
-      });
     }
 
     // Execute query with logging
