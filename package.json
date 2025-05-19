@@ -12,7 +12,8 @@
     "migration:create": "node scripts/create-migration.js",
     "migration:run": "node scripts/run-migrations.js",
     "db:seed": "node scripts/seed-data.js",
-    "add-status-to-categories": "node migrations/add-status-to-product-categories.js"
+    "add-status-to-categories": "node migrations/add-status-to-product-categories.js",
+    "migrate-media": "ts-node scripts/migrate-media.ts"
   },
   "dependencies": {
     "@google/genai": "^0.7.0",
