@@ -185,7 +185,23 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       ? whereConditions.join(' AND ') 
       : '1=1'; // Default to true if no conditions
 
-    // Use a direct database query to get products with their avatar and secondary images
+    // Thêm kiểm tra tính hợp lệ cho sortBy
+    const validSortFields = ['id', 'name', 'createdAt', 'updatedAt', 'status', 'categoryId'];
+    let sanitizedSortBy = 'createdAt';
+    let needsPriceSort = false;
+
+    // Kiểm tra xem có phải đang sort theo price không
+    if (sortBy === 'price') {
+      needsPriceSort = true;
+      sanitizedSortBy = 'id'; // Sắp xếp tạm thời theo id, sau đó sẽ sắp xếp lại theo giá
+    } else {
+      sanitizedSortBy = validSortFields.includes(sortBy as string) ? sortBy as string : 'createdAt';
+    }
+
+    // Đảm bảo sortOrder hợp lệ
+    const sanitizedSortOrder = (sortOrder as string).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+
+    // Sửa câu truy vấn SQL để không sắp xếp theo price
     const directQuery = `
       SELECT 
         p.id, 
@@ -194,13 +210,15 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         p.categoryId, 
         p.slug, 
         p.avatarUrl,
-        p.status
+        p.status,
+        p.createdAt,
+        p.updatedAt
       FROM 
         products p
       WHERE 
         ${whereClause}
       ORDER BY 
-        p.${sortBy} ${sortOrder}
+        p.${sanitizedSortBy} ${sanitizedSortOrder}
       LIMIT ${limitNumber} 
       OFFSET ${offset}
     `;
@@ -267,13 +285,54 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       });
       
       // Prepare the final response
-      const productsWithDetails = productsWithImages.map((product: any) => {
+      let productsWithDetails = productsWithImages.map((product: any) => {
         return {
           ...product,
           items: productItemsMap.get(product.id) || [],
           media: productMediaMap.get(product.id) || [],
         };
       });
+      
+      // Di chuyển phần xử lý sắp xếp theo giá vào đây
+      if (needsPriceSort) {
+        // Lấy danh sách ID của tất cả sản phẩm
+        const productIds = productsWithImages.map((p: any) => p.id);
+        
+        // Lấy giá nhỏ nhất của mỗi sản phẩm
+        const priceQuery = `
+          SELECT 
+            pi.productId, 
+            MIN(pi.price) as minPrice  
+          FROM 
+            product_items pi
+          WHERE 
+            pi.productId IN (${productIds.join(',')})
+          GROUP BY 
+            pi.productId
+        `;
+        
+        // Lấy thông tin giá
+        const [priceResults] = await sequelize.query(priceQuery);
+        
+        // Tạo map giá theo product ID
+        const priceMap = new Map();
+        Array.isArray(priceResults) && priceResults.forEach((item: any) => {
+          priceMap.set(item.productId, item.minPrice);
+        });
+        
+        // Thêm thông tin giá vào kết quả
+        productsWithDetails = productsWithDetails.map((product: any) => ({
+          ...product,
+          price: priceMap.get(product.id) || 0
+        }));
+        
+        // Sắp xếp kết quả theo giá
+        productsWithDetails.sort((a: any, b: any) => {
+          return sanitizedSortOrder === 'ASC' 
+            ? a.price - b.price 
+            : b.price - a.price;
+        });
+      }
       
       // Count total products for pagination
       const countResult = await sequelize.query(
@@ -283,7 +342,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       
       const total = countResult[0] ? (countResult[0] as any).total : productsWithDetails.length;
       const count = Number(total);
-  
+
       res.status(200).json({ 
         message: 'Products fetched successfully',
         data: productsWithDetails,
@@ -296,9 +355,10 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
           hasMore: pageNumber < Math.ceil(count / limitNumber)
         }
       });
+      
     } catch (error) {
       console.error('Error with direct query:', error);
-      // Fallback to simpler approach
+      // Fallback code...
       const { count, rows: products } = await Product.findAndCountAll({
         where: productWhere,
         order: [[sortBy as string, sortOrder as string]],
