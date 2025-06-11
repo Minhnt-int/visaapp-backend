@@ -67,7 +67,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         where: { orderId },
       });
       
-      const totalAmount = allItems.reduce((sum, item) => sum + item.subtotal, 0);
+      const totalAmount = allItems.reduce((sum, item : any) => sum + item.subtotal, 0);
       await order.update({ totalAmount });
 
       res.status(200).json({
@@ -106,7 +106,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         where: { orderId },
       });
       
-      const totalAmount = allItems.reduce((sum, item) => sum + item.subtotal, 0);
+      const totalAmount = allItems.reduce((sum, item : any) => sum + item.subtotal, 0);
       await order.update({ totalAmount });
 
       res.status(201).json({
@@ -139,7 +139,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         where: { orderId: order.id },
       });
       
-      const totalAmount = allItems.reduce((sum, item) => sum + item.subtotal, 0);
+      const totalAmount = allItems.reduce((sum, item : any) => sum + item.subtotal, 0);
       await order.update({ totalAmount });
     }
 
@@ -174,7 +174,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
         where: { orderId },
       });
       
-      const totalAmount = allItems.reduce((sum, item) => sum + item.subtotal, 0);
+      const totalAmount = allItems.reduce((sum, item : any) => sum + item.subtotal, 0);
       await order.update({ totalAmount });
     }
 

@@ -13,12 +13,22 @@ export interface MetaJsonAttributes {
 // Define interface for creation (id is optional)
 export interface MetaJsonCreationAttributes extends Optional<MetaJsonAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class MetaJson extends Model<MetaJsonAttributes, MetaJsonCreationAttributes> implements MetaJsonAttributes {
-  public id!: number;
-  public pageKey!: string;
-  public metaData!: any;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class MetaJson extends Model<MetaJsonAttributes, MetaJsonCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get pageKey(): string {
+    return this.getDataValue('pageKey');
+  }
+  public get metaData(): any {
+    return this.getDataValue('metaData');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 MetaJson.init(

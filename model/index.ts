@@ -61,16 +61,43 @@ export interface ProductCategoryAttributes {
 // Define interface for creation (id is optional)
 export interface ProductCategoryCreationAttributes extends Optional<ProductCategoryAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCreationAttributes> implements ProductCategoryAttributes {
-  public id!: number;
-  public name!: string;
-  public slug!: string;
-  public description!: string;
-  public parentId!: number;
-  public avatarUrl!: string;
-  public status!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class ProductCategory extends Model<ProductCategoryAttributes, ProductCategoryCreationAttributes> {
+  // Sử dụng getter tường minh
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get name(): string {
+    return this.getDataValue('name');
+  }
+  public get slug(): string {
+    return this.getDataValue('slug');
+  }
+  public get description(): string | undefined {
+    return this.getDataValue('description');
+  }
+  public get parentId(): number | undefined {
+    return this.getDataValue('parentId');
+  }
+  public get avatarUrl(): string | undefined {
+    return this.getDataValue('avatarUrl');
+  }
+  public get status(): string {
+    return this.getDataValue('status');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
+
+  // Nếu bạn cần setter, bạn cũng có thể định nghĩa chúng
+  // public set name(value: string) {
+  //   this.setDataValue('name', value);
+  // }
+  // Tương tự cho các thuộc tính khác nếu cần thiết
+  // Tuy nhiên, thường thì Sequelize quản lý việc set giá trị qua .update() hoặc .create()
+  // nên getter thường là đủ cho việc truy cập.
 }
 
 ProductCategory.init(
@@ -144,20 +171,46 @@ export interface ProductAttributes {
 // Define interface for creation (id is optional)
 export interface ProductCreationAttributes extends Optional<ProductAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class Product extends Model<ProductAttributes, ProductCreationAttributes> implements ProductAttributes {
-  public id!: number;
-  public name!: string;
-  public description!: string;
-  public shortDescription!: string;
-  public categoryId!: number;
-  public avatarUrl!: string;
-  public slug!: string;
-  public metaTitle!: string;
-  public metaDescription!: string;
-  public metaKeywords!: string;
-  public status!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class Product extends Model<ProductAttributes, ProductCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get name(): string {
+    return this.getDataValue('name');
+  }
+  public get description(): string | undefined {
+    return this.getDataValue('description');
+  }
+  public get shortDescription(): string | undefined {
+    return this.getDataValue('shortDescription');
+  }
+  public get categoryId(): number {
+    return this.getDataValue('categoryId');
+  }
+  public get avatarUrl(): string | undefined {
+    return this.getDataValue('avatarUrl');
+  }
+  public get slug(): string {
+    return this.getDataValue('slug');
+  }
+  public get metaTitle(): string | undefined {
+    return this.getDataValue('metaTitle');
+  }
+  public get metaDescription(): string | undefined {
+    return this.getDataValue('metaDescription');
+  }
+  public get metaKeywords(): string | undefined {
+    return this.getDataValue('metaKeywords');
+  }
+  public get status(): string {
+    return this.getDataValue('status');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 Product.init(
@@ -243,17 +296,37 @@ export interface ProductItemAttributes {
 // Define interface for creation (id is optional)
 export interface ProductItemCreationAttributes extends Optional<ProductItemAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class ProductItem extends Model<ProductItemAttributes, ProductItemCreationAttributes> implements ProductItemAttributes {
-  public id!: number;
-  public productId!: number;
-  public name!: string;
-  public color!: string;
-  public price!: number;
-  public originalPrice!: number;
-  public status!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class ProductItem extends Model<ProductItemAttributes, ProductItemCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get productId(): number {
+    return this.getDataValue('productId');
+  }
+  public get name(): string {
+    return this.getDataValue('name');
+  }
+  public get color(): string {
+    return this.getDataValue('color');
+  }
+  public get price(): number {
+    return this.getDataValue('price');
+  }
+  public get originalPrice(): number {
+    return this.getDataValue('originalPrice');
+  }
+  public get status(): string {
+    return this.getDataValue('status');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
+
+// Các model khác (ProductMedia, Order, OrderItem, BlogPost, Media, User, MetaSEO) cũng cần được sửa tương tự
 
 ProductItem.init(
   {
@@ -320,14 +393,28 @@ export interface ProductMediaAttributes {
 // Define interface for creation (id is optional)
 export interface ProductMediaCreationAttributes extends Optional<ProductMediaAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class ProductMedia extends Model<ProductMediaAttributes, ProductMediaCreationAttributes> implements ProductMediaAttributes {
-  public id!: number;
-  public productId!: number;
-  public url!: string;
-  public type!: string;
-  public altText!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class ProductMedia extends Model<ProductMediaAttributes, ProductMediaCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get productId(): number {
+    return this.getDataValue('productId');
+  }
+  public get url(): string {
+    return this.getDataValue('url');
+  }
+  public get type(): string {
+    return this.getDataValue('type');
+  }
+  public get altText(): string | undefined {
+    return this.getDataValue('altText');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 ProductMedia.init(
@@ -388,17 +475,37 @@ export interface OrderAttributes {
 
 export interface OrderCreationAttributes extends Optional<OrderAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class Order extends Model<OrderAttributes, OrderCreationAttributes> implements OrderAttributes {
-  public id!: number;
-  public userId?: number;
-  public recipientName!: string;
-  public recipientPhone!: string;
-  public recipientAddress!: string;
-  public notes!: string;
-  public status!: string;
-  public totalAmount!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class Order extends Model<OrderAttributes, OrderCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get userId(): number | undefined {
+    return this.getDataValue('userId');
+  }
+  public get recipientName(): string {
+    return this.getDataValue('recipientName');
+  }
+  public get recipientPhone(): string {
+    return this.getDataValue('recipientPhone');
+  }
+  public get recipientAddress(): string {
+    return this.getDataValue('recipientAddress');
+  }
+  public get notes(): string | undefined {
+    return this.getDataValue('notes');
+  }
+  public get status(): string {
+    return this.getDataValue('status');
+  }
+  public get totalAmount(): number {
+    return this.getDataValue('totalAmount');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 Order.init(
@@ -476,21 +583,49 @@ export interface OrderItemAttributes {
 
 export interface OrderItemCreationAttributes extends Optional<OrderItemAttributes, 'id' | 'subtotal' | 'createdAt' | 'updatedAt'> {}
 
-class OrderItem extends Model<OrderItemAttributes, OrderItemCreationAttributes> implements OrderItemAttributes {
-  public id!: number;
-  public orderId!: number;
-  public productId!: number;
-  public productItemId!: number;
-  public quantity!: number;
-  public price!: number;
-  public originalPrice!: number;
-  public color!: string;
-  public productName!: string;
-  public itemName!: string;
-  public itemStatus!: string;
-  public subtotal!: number;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class OrderItem extends Model<OrderItemAttributes, OrderItemCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get orderId(): number {
+    return this.getDataValue('orderId');
+  }
+  public get productId(): number {
+    return this.getDataValue('productId');
+  }
+  public get productItemId(): number {
+    return this.getDataValue('productItemId');
+  }
+  public get quantity(): number {
+    return this.getDataValue('quantity');
+  }
+  public get price(): number {
+    return this.getDataValue('price');
+  }
+  public get originalPrice(): number {
+    return this.getDataValue('originalPrice');
+  }
+  public get color(): string {
+    return this.getDataValue('color');
+  }
+  public get productName(): string {
+    return this.getDataValue('productName');
+  }
+  public get itemName(): string {
+    return this.getDataValue('itemName');
+  }
+  public get itemStatus(): string {
+    return this.getDataValue('itemStatus');
+  }
+  public get subtotal(): number | undefined { // VIRTUAL field
+    return this.getDataValue('price') * this.getDataValue('quantity');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 OrderItem.init(
@@ -763,22 +898,46 @@ export interface BlogPostAttributes {
 
 export interface BlogPostCreationAttributes extends Optional<BlogPostAttributes, 'id' | 'viewCount' | 'createdAt' | 'updatedAt'> {}
 
-class BlogPost extends Model<BlogPostAttributes, BlogPostCreationAttributes> implements BlogPostAttributes {
-  public id!: number;
-  public title!: string;
-  public content!: string;
-  public slug!: string;
-  public metaTitle!: string;
-  public metaDescription!: string;
-  public metaKeywords!: string;
-  public author!: string;
-  public publishedAt!: Date;
-  public viewCount!: number;
-  public blogCategoryId!: number;
-  public avatarUrl!: string;
-  public status!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class BlogPost extends Model<BlogPostAttributes, BlogPostCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get title(): string {
+    return this.getDataValue('title');
+  }
+  public get content(): string {
+    return this.getDataValue('content');
+  }
+  public get slug(): string {
+    return this.getDataValue('slug');
+  }
+  public get metaTitle(): string | undefined {
+    return this.getDataValue('metaTitle');
+  }
+  public get metaDescription(): string | undefined {
+    return this.getDataValue('metaDescription');
+  }
+  public get metaKeywords(): string | undefined {
+    return this.getDataValue('metaKeywords');
+  }
+  public get author(): string {
+    return this.getDataValue('author');
+  }
+  public get publishedAt(): Date | undefined {
+    return this.getDataValue('publishedAt');
+  }
+  public get viewCount(): number | undefined {
+    return this.getDataValue('viewCount');
+  }
+  public get blogCategoryId(): number {
+    return this.getDataValue('blogCategoryId');
+  }
+  public get avatarUrl(): string | undefined {
+    return this.getDataValue('avatarUrl');
+  }
+  public get status(): string {
+    return this.getDataValue('status');
+  }
 }
 
 BlogPost.init(
@@ -893,14 +1052,28 @@ export interface MediaAttributes {
 // Define interface for creation (id is optional)
 export interface MediaCreationAttributes extends Optional<MediaAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class Media extends Model<MediaAttributes, MediaCreationAttributes> implements MediaAttributes {
-  public id!: number;
-  public name!: string;
-  public url!: string;
-  public type!: string;
-  public altText!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class Media extends Model<MediaAttributes, MediaCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get name(): string {
+    return this.getDataValue('name');
+  }
+  public get url(): string {
+    return this.getDataValue('url');
+  }
+  public get type(): string {
+    return this.getDataValue('type');
+  }
+  public get altText(): string | undefined {
+    return this.getDataValue('altText');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 Media.init(
@@ -959,14 +1132,28 @@ export interface UserAttributes {
 
 export interface UserCreationAttributes extends Optional<UserAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-export class User extends Model<UserAttributes, UserCreationAttributes> implements UserAttributes {
-  public id!: number;
-  public name!: string;
-  public email!: string;
-  public password!: string;
-  public role!: 'user' | 'admin';
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+export class User extends Model<UserAttributes, UserCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get name(): string {
+    return this.getDataValue('name');
+  }
+  public get email(): string {
+    return this.getDataValue('email');
+  }
+  public get password(): string {
+    return this.getDataValue('password');
+  }
+  public get role(): 'user' | 'admin' {
+    return this.getDataValue('role');
+  }
+  public get createdAt(): Date { // Giữ lại kiểu Date vì trong UserAttributes là Date
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date { // Giữ lại kiểu Date vì trong UserAttributes là Date
+    return this.getDataValue('updatedAt');
+  }
 }
 
 User.init(
@@ -1040,19 +1227,43 @@ export interface MetaSEOAttributes {
 // Define interface for creation (id is optional)
 export interface MetaSEOCreationAttributes extends Optional<MetaSEOAttributes, 'id' | 'createdAt' | 'updatedAt'> {}
 
-class MetaSEO extends Model<MetaSEOAttributes, MetaSEOCreationAttributes> implements MetaSEOAttributes {
-  public id!: number;
-  public pageKey!: string;
-  public pageUrl!: string;
-  public title!: string;
-  public description!: string;
-  public keywords!: string;
-  public ogTitle!: string;
-  public ogDescription!: string;
-  public ogImage!: string;
-  public customHead!: string;
-  public readonly createdAt!: Date;
-  public readonly updatedAt!: Date;
+class MetaSEO extends Model<MetaSEOAttributes, MetaSEOCreationAttributes> {
+  public get id(): number {
+    return this.getDataValue('id');
+  }
+  public get pageKey(): string {
+    return this.getDataValue('pageKey');
+  }
+  public get pageUrl(): string | undefined {
+    return this.getDataValue('pageUrl');
+  }
+  public get title(): string {
+    return this.getDataValue('title');
+  }
+  public get description(): string | undefined {
+    return this.getDataValue('description');
+  }
+  public get keywords(): string | undefined {
+    return this.getDataValue('keywords');
+  }
+  public get ogTitle(): string | undefined {
+    return this.getDataValue('ogTitle');
+  }
+  public get ogDescription(): string | undefined {
+    return this.getDataValue('ogDescription');
+  }
+  public get ogImage(): string | undefined {
+    return this.getDataValue('ogImage');
+  }
+  public get customHead(): string | undefined {
+    return this.getDataValue('customHead');
+  }
+  public get createdAt(): Date | undefined {
+    return this.getDataValue('createdAt');
+  }
+  public get updatedAt(): Date | undefined {
+    return this.getDataValue('updatedAt');
+  }
 }
 
 MetaSEO.init(
