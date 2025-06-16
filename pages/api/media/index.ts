@@ -13,6 +13,7 @@ import { Op, QueryTypes } from 'sequelize';
 export const config = {
   api: {
     bodyParser: false, // Disable body parsing, we'll use formidable
+    sizeLimit: '25mb', // Tăng giới hạn kích thước request cho route này
   },
 };
 
