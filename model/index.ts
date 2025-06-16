@@ -117,7 +117,7 @@ ProductCategory.init(
       unique: true,
     },
     description: {
-      type: DataTypes.STRING(256),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     parentId: {
@@ -225,7 +225,7 @@ Product.init(
       allowNull: false,
     },
     description: {
-      type: new DataTypes.STRING(256),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     shortDescription: {
@@ -250,7 +250,7 @@ Product.init(
       allowNull: true,
     },
     metaDescription: {
-      type: new DataTypes.STRING(256),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     metaKeywords: {
@@ -965,7 +965,7 @@ BlogPost.init(
       allowNull: true,
     },
     metaDescription: {
-      type: new DataTypes.STRING(512),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     metaKeywords: {
@@ -1289,7 +1289,7 @@ MetaSEO.init(
       allowNull: false,
     },
     description: {
-      type: new DataTypes.STRING(512),
+      type: DataTypes.TEXT,
       allowNull: true,
     },
     keywords: {
@@ -1302,7 +1302,7 @@ MetaSEO.init(
       field: 'og_title',
     },
     ogDescription: {
-      type: new DataTypes.STRING(512),
+      type: DataTypes.TEXT,
       allowNull: true,
       field: 'og_description',
     },
