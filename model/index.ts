@@ -158,6 +158,7 @@ export interface ProductAttributes {
   description?: string;
   shortDescription?: string;
   categoryId: number;
+  categoryName?: string;
   avatarUrl?: string;
   slug: string;
   metaTitle?: string;

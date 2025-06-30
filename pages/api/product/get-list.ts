@@ -343,29 +343,86 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       const total = countResult[0] ? (countResult[0] as any).total : productsWithDetails.length;
       const count = Number(total);
 
-      res.status(200).json({ 
-        message: 'Products fetched successfully',
-        data: productsWithDetails,
-        pagination: {
-          total: count,
-          page: pageNumber,
-          limit: limitNumber,
-          offset: offset,
-          totalPages: Math.ceil(count / limitNumber),
-          hasMore: pageNumber < Math.ceil(count / limitNumber)
-        }
+      // Sau khi lấy danh sách sản phẩm, trước khi trả về response
+    
+      // 1. Lấy tất cả categoryId từ sản phẩm
+      interface ProductWithDetails {
+        id: number;
+        name: string;
+        shortDescription: string;
+        categoryId: number;
+        slug: string;
+        avatarUrl: string;
+        status: string;
+        createdAt: string;
+        updatedAt: string;
+        items: any[];
+        media: any[];
+        price?: number;
+      }
+
+      const categoryIds: number[] = Array.from(new Set(productsWithDetails.map((product: ProductWithDetails) => product.categoryId)));
+      
+      // 2. Query tất cả categories liên quan trong một lần
+      const categories = await ProductCategory.findAll({
+        where: { id: categoryIds },
+        attributes: ['id', 'name']
       });
       
+      // 3. Tạo map để tra cứu nhanh
+      const categoryMap = {} as any;
+      categories.forEach(category => {
+        categoryMap[category.id] = category.name;
+      });
+      
+      // 4. Thêm categoryName vào mỗi sản phẩm
+      const productsWithCategory = productsWithDetails.map(product => {
+        return {
+          ...product,
+          categoryName: categoryMap[product.categoryId] || null
+        };
+      });
+      
+      // 5. Trả về response với sản phẩm đã bổ sung categoryName
+      return res.status(200).json({
+        message: "Products fetched successfully",
+        data: productsWithCategory,
+        pagination: {
+          total,
+          page: Number(page),
+          limit: Number(limit),
+          offset,
+          totalPages: Math.ceil(total / Number(limit)),
+          hasMore: Number(page) < Math.ceil(total / Number(limit))
+        }
+      });
+
     } catch (error) {
       console.error('Error with direct query:', error);
       // Fallback code...
-      const { count, rows: products } = await Product.findAndCountAll({
+      const { count, rows } = await Product.findAndCountAll({
         where: productWhere,
-        order: [[sortBy as string, sortOrder as string]],
-        limit: limitNumber,
-        offset: offset,
-        raw: true
+        limit: Number(limit),
+        offset,
+        order: [['createdAt', 'DESC']],
+        include: [{
+          model: ProductCategory,
+          as: 'category', // Phải khớp với association trong model
+          attributes: ['id', 'name']
+        }]
       });
+      
+      // Chuyển đổi kết quả trước khi trả về
+      const products = rows.map(product => {
+        const plainProduct = product.get({ plain: true }) as any;
+        
+        // Thêm categoryName từ object category được join
+        if (plainProduct.category) {
+          plainProduct.categoryName = plainProduct.category.name;
+        }
+        
+        return plainProduct;
+      }); 
       
       res.status(200).json({ 
         message: 'Products fetched successfully (fallback)',
