@@ -290,8 +290,8 @@ export interface ProductItemAttributes {
   price: number;
   originalPrice: number;
   status: string;
-  mediaIds?: number[]; // CHỈ có mediaIds
-  mediaIndex?: number[]; // CHỈ có mediaIds
+  mediaIds: number[];
+  mediaIndex?: number[]; 
   createdAt?: Date;
   updatedAt?: Date;
 }
