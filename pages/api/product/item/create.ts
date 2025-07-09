@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../../lib/db';
-import { Product, ProductItem, ProductItemStatus } from '../../../../model';
+import { Product, ProductItem, ProductItemStatus, ProductMedia } from '../../../../model';
 import moment from 'moment-timezone';
 import { asyncHandler, AppError } from '../../../../lib/error-handler';
 
@@ -27,11 +27,21 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
 
   await connectToDatabase();
 
-  const { productId, name, color, price, originalPrice, status } = req.body;
+  const { productId, name, color, price, originalPrice, status, mediaId } = req.body;
 
   // Kiểm tra dữ liệu đầu vào
   if (!productId || !name || !color || price === undefined) {
-    throw new AppError(400, 'Missing required fields', 'VALIDATION_ERROR');
+    throw new AppError(400, 'Missing required fields: productId, name, color, price', 'VALIDATION_ERROR');
+  }
+
+  // Kiểm tra mediaId nếu được cung cấp
+  if (mediaId) {
+    const media = await ProductMedia.findOne({
+      where: { id: mediaId, productId: productId }
+    });
+    if (!media) {
+      throw new AppError(400, 'Media not found or does not belong to this product', 'VALIDATION_ERROR');
+    }
   }
 
   // Kiểm tra giá hợp lệ
@@ -58,25 +68,23 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   const timestamp = moment().tz('Asia/Ho_Chi_Minh').toDate();
 
   try {
-    // Tạo biến thể sản phẩm
-    const productItem = await ProductItem.create({
+    const newItem = await ProductItem.create({
       productId,
       name,
       color,
       price,
       originalPrice: finalOriginalPrice,
       status: mappedStatus,
-      createdAt: timestamp,
-      updatedAt: timestamp,
+      mediaId: mediaId || null
     });
 
     res.status(201).json({
       message: 'Product item created successfully',
-      data: productItem,
+      data: newItem,
     });
   } catch (error) {
     throw error;
   }
 });
 
-export default handler; 
+export default handler;

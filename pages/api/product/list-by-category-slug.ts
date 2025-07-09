@@ -101,6 +101,23 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         { replacements: [product.id] }
       );
       product.media = Array.isArray(mediaResult) ? mediaResult : [];
+
+      // Get product items with media
+      const productIds = [product.id]; // Assuming product.id is the identifier for the product
+      const [productItemsResult] = await sequelize.query(
+        `
+        SELECT 
+          pi.*,
+          pm.url as mediaUrl,
+          pm.type as mediaType,
+          pm.altText as mediaAltText
+        FROM product_items pi
+        LEFT JOIN product_media pm ON pi.mediaId = pm.id
+        WHERE pi.productId IN (${productIds.join(',')})
+        `,
+        { replacements: productIds }
+      );
+      product.items = Array.isArray(productItemsResult) ? productItemsResult : [];
     }
 
     return res.status(200).json({
@@ -120,4 +137,4 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     logger.error('Error retrieving products:', error);
     throw new AppError(500, 'Internal server error', 'SERVER_ERROR');
   }
-}); 
+});

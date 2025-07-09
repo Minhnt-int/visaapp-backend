@@ -32,13 +32,36 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       order: [['name', 'ASC']]
     });
 
+    // Thêm thông tin media vào productItems
+    const productIds = productItems.map(item => item.productId);
+    const productMedia = await ProductItem.sequelize?.query(`
+      SELECT 
+        pi.*,
+        pm.url as mediaUrl,
+        pm.type as mediaType,
+        pm.altText as mediaAltText
+      FROM product_items pi
+      LEFT JOIN product_media pm ON pi.mediaId = pm.id
+      WHERE pi.productId IN (${productIds.join(',')})
+    `);
+
+    const productItemsWithMedia = productItems.map(item => {
+      const media = productMedia?.[0]?.find((m: any) => m.productId === item.productId) as any;
+      return {
+        ...item.toJSON(),
+        mediaUrl: media?.mediaUrl || null,
+        mediaType: media?.mediaType || null,
+        mediaAltText: media?.mediaAltText || null,
+      };
+    });
+
     res.status(200).json({
       message: 'Product items fetched successfully',
-      data: productItems,
+      data: productItemsWithMedia,
     });
   } catch (error) {
     throw error;
   }
 });
 
-export default handler; 
+export default handler;

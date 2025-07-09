@@ -290,6 +290,8 @@ export interface ProductItemAttributes {
   price: number;
   originalPrice: number;
   status: string;
+  mediaIds?: number[]; // CHỈ có mediaIds
+  mediaIndex?: number[]; // CHỈ có mediaIds
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -319,6 +321,9 @@ class ProductItem extends Model<ProductItemAttributes, ProductItemCreationAttrib
   public get status(): string {
     return this.getDataValue('status');
   }
+  public get mediaIds(): number[] | undefined {
+    return this.getDataValue('mediaIds');
+  }
   public get createdAt(): Date | undefined {
     return this.getDataValue('createdAt');
   }
@@ -326,8 +331,6 @@ class ProductItem extends Model<ProductItemAttributes, ProductItemCreationAttrib
     return this.getDataValue('updatedAt');
   }
 }
-
-// Các model khác (ProductMedia, Order, OrderItem, BlogPost, Media, User, MetaSEO) cũng cần được sửa tương tự
 
 ProductItem.init(
   {
@@ -361,6 +364,11 @@ ProductItem.init(
       type: DataTypes.ENUM(...Object.values(ProductItemStatus)),
       allowNull: false,
       defaultValue: ProductItemStatus.AVAILABLE,
+    },
+    mediaIds: { // CHỈ có mediaIds, KHÔNG có mediaId
+      type: DataTypes.JSON,
+      allowNull: true,
+      defaultValue: null,
     },
     createdAt: {
       type: DataTypes.DATE,
@@ -1340,4 +1348,4 @@ MetaSEO.init(
 
 // Other relationships are here
 
-export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media, MetaSEO, MetaJson }; 
+export { Product, ProductCategory, ProductItem, ProductMedia, Order, OrderItem, BlogPost, BlogCategory, Media, MetaSEO, MetaJson };

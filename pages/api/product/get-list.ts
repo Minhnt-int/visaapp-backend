@@ -254,8 +254,10 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       
       // Truy vấn thông tin ProductItem cho các sản phẩm
       const productItemsQuery = `
-        SELECT * FROM product_items 
-        WHERE productId IN (${productIds.join(',')})
+        SELECT 
+          pi.*
+        FROM product_items pi
+        WHERE pi.productId IN (${productIds.join(',')})
       `;
       const [productItemsResult] = await sequelize.query(productItemsQuery);
       

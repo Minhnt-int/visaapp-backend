@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../../lib/db';
-import { ProductItem, ProductItemStatus } from '../../../../model';
+import { ProductItem, ProductItemStatus, ProductMedia } from '../../../../model';
 import { asyncHandler, AppError } from '../../../../lib/error-handler';
 
 // Hàm chuyển đổi giá trị status
@@ -26,7 +26,7 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
 
   await connectToDatabase();
 
-  const { id, name, color, price, originalPrice, status } = req.body;
+  const { id, name, color, price, originalPrice, status, mediaId } = req.body;
 
   // Kiểm tra ID
   if (!id) {
@@ -69,6 +69,19 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     updateData.status = mapStatusValue(status);
   }
 
+  // Kiểm tra mediaId nếu được cung cấp
+  if (mediaId !== undefined) {
+    if (mediaId !== null) {
+      const media = await ProductMedia.findOne({
+        where: { id: mediaId, productId: productItem.productId }
+      });
+      if (!media) {
+        throw new AppError(400, 'Media not found or does not belong to this product', 'VALIDATION_ERROR');
+      }
+    }
+    updateData.mediaId = mediaId;
+  }
+
   try {
     // Cập nhật ProductItem
     await productItem.update(updateData);
@@ -82,4 +95,4 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
   }
 });
 
-export default handler; 
+export default handler;

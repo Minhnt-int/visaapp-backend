@@ -147,24 +147,65 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         if (itemData.price !== undefined) itemUpdateFields.price = itemData.price;
         if (itemData.originalPrice !== undefined) itemUpdateFields.originalPrice = itemData.originalPrice;
         if (itemData.status !== undefined) {
-            itemUpdateFields.status = mapItemStatusValue(itemData.status);
+          itemUpdateFields.status = mapItemStatusValue(itemData.status);
         }
-        // Add other updatable fields for ProductItem as needed
+        
+        // XỬ LÝ MEDIAINDEX (chỉ nhận mediaIndex, lưu vào mediaIds)
+        if (itemData.mediaIndex !== undefined) {
+          if (itemData.mediaIndex !== null && Array.isArray(itemData.mediaIndex) && itemData.mediaIndex.length > 0) {
+            // Lấy tất cả media của product này theo thứ tự
+            const allProductMedia = await ProductMedia.findAll({
+              where: { productId: id },
+              order: [['id', 'ASC']]
+            });
+            
+            console.log('Available media for product:', allProductMedia.map(m => ({ id: m.id, url: m.url })));
+            console.log('Received mediaIndex:', itemData.mediaIndex);
+            
+            // Chuyển mediaIndex thành mediaIds thực tế
+            const validMediaIds = [];
+            for (const mediaIndex of itemData.mediaIndex) {
+              if (mediaIndex >= 0 && mediaIndex < allProductMedia.length) {
+                const actualMediaId = allProductMedia[mediaIndex].id;
+                validMediaIds.push(actualMediaId);
+                console.log(`Index ${mediaIndex} → Media ID ${actualMediaId}`);
+              } else {
+                logger.warn(`Media index ${mediaIndex} is invalid for product ${id}. Available indices: 0-${allProductMedia.length - 1}`);
+              }
+            }
+            
+            // Lưu vào database cột mediaIds dạng JSON string
+            itemUpdateFields.mediaIds = validMediaIds.length > 0 ? JSON.stringify(validMediaIds) : null;
+            
+            logger.debug('Media assignment for item', { 
+              itemName: itemData.name,
+              receivedIndexes: itemData.mediaIndex,
+              convertedToIds: validMediaIds 
+            });
+          } else {
+            // KHÔNG CẬP NHẬT mediaIds nếu mediaIndex là null hoặc empty array
+            // Giữ nguyên giá trị hiện tại
+            logger.debug(`Skipping mediaIds update for item ${itemData.name} - mediaIndex is null/empty`);
+          }
+        }
+        
+        // KHÔNG XỬ LÝ mediaIds nữa - chỉ làm việc với mediaIndex
+        // if (itemData.mediaIds !== undefined) { ... } // Xóa đoạn này
+
+        // Debug log
+        console.log('Processing item:', JSON.stringify(itemData, null, 2));
+        console.log('itemUpdateFields:', JSON.stringify(itemUpdateFields, null, 2));
 
         // Đảm bảo ID được xử lý như số
         if (itemData.id) { // Existing item
-          // Chuyển đổi id thành number để đảm bảo so sánh đúng kiểu
           const itemId = typeof itemData.id === 'string' ? parseInt(itemData.id, 10) : itemData.id;
           const itemToUpdate = existingDbItems.find(dbItem => dbItem.id === itemId);
           if (itemToUpdate) {
             await itemToUpdate.update(itemUpdateFields);
+            console.log('Item after update:', JSON.stringify(itemToUpdate.toJSON(), null, 2));
             associatedDataChanged = true;
             logger.debug('Updated product item', { itemId: itemToUpdate.id });
-          } else { // Item with this ID was not found among the product's current items.
-            // This means the client sent an item ID that either doesn't belong to this product
-            // or doesn't exist. Attempting to create with a specific ID here is risky
-            // as it can lead to primary key conflicts if the ID is globally in use.
-            // If the intention was to create a new item, the ID should have been omitted.
+          } else {
             logger.warn(
               'Product item for update not found or does not belong to this product. ' +
               'Skipping this item. If it was intended to be a new item, omit the ID.',
@@ -172,11 +213,11 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
             );
           }
         } else { // New item
-          await ProductItem.create({
+          const newItem = await ProductItem.create({
             productId: id,
-            ...itemUpdateFields // Spread fields including mapped status
-            // Ensure all required fields for ProductItem are present
+            ...itemUpdateFields
           });
+          console.log('New item created:', JSON.stringify(newItem.toJSON(), null, 2));
           associatedDataChanged = true;
           logger.debug('Created new product item', { name: itemData.name });
         }
@@ -217,7 +258,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         {
           model: ProductItem,
           as: 'items',
-          attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status']
+          attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status', 'mediaIds'] // Thêm mediaIds
         }
       ]
     });

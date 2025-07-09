@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '../../../lib/db';
-import { Product, ProductMedia, ProductItem } from '../../../model';
+import { Product, ProductMedia, ProductItem, ProductCategory } from '../../../model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await connectToDatabase();
@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     try {
       const { slug } = req.query;
 
-      // Tìm sản phẩm theo slug và bao gồm thông tin media và items
+      // Tìm sản phẩm theo slug
       const product = await Product.findOne({
         where: { slug },
         include: [
@@ -21,25 +21,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           {
             model: ProductItem,
             as: 'items',
-            attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status']
+            attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status', 'mediaIds'] // Thay mediaId bằng mediaIds
           }
         ]
       });
 
       if (!product) {
-        return res.status(404).json({ message: 'Product not found' });
+        return res.status(404).json({ 
+          success: false,
+          message: 'Product not found' 
+        });
+      }
+
+      // Lấy data dạng plain object
+      const productData = product.get({ plain: true }) as any;
+
+      // Lấy tên category từ categoryId
+      if (productData.categoryId) {
+        const category = await ProductCategory.findByPk(productData.categoryId);
+        if (category) {
+          productData.categoryName = category.name;
+        }
       }
 
       res.status(200).json({
+        success: true,
         message: 'Product fetched successfully!',
-        data: product,
+        data: productData,
       });
     } catch (error) {
       console.error('Error fetching product:', error);
-      res.status(500).json({ message: 'Error fetching product', error: (error as any).message });
+      res.status(500).json({ 
+        success: false,
+        message: 'Error fetching product', 
+        error: (error as any).message 
+      });
     }
   } else {
     res.setHeader('Allow', ['GET']);
-    res.status(405).end(`Method ${req.method} Not Allowed`);
+    res.status(405).json({
+      success: false,
+      message: `Method ${req.method} Not Allowed`
+    });
   }
 }

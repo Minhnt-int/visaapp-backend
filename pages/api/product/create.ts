@@ -24,6 +24,33 @@ const mapStatusValue = (status: string): string => {
   return ProductItemStatus.AVAILABLE;
 };
 
+// Cập nhật type cho CreateProductBody
+export type CreateProductBody = {
+  name: string;
+  description?: string;
+  shortDescription?: string;
+  categoryId: number;
+  slug: string;
+  metaTitle?: string;
+  metaDescription?: string;
+  metaKeywords?: string;
+  avatarUrl?: string;
+  items?: {
+    name: string;
+    color: string;
+    price: number;
+    originalPrice?: number;
+    status?: string;
+    mediaIds?: number[]; // Thay mediaIndex bằng mediaIds
+    mediaIndex?: number[]; // Thay mediaIndex bằng mediaIds
+  }[];
+  media?: { 
+    type: 'image' | 'video'; 
+    url: string;
+    altText?: string;
+  }[];
+};
+
 const validateProductData = (data: any) => {
   logger.debug('Validating product data', { data });
   const errors = [];
@@ -42,6 +69,19 @@ const validateProductData = (data: any) => {
         if (!item.name) errors.push(`Item ${index + 1}: Name is required`);
         if (!item.color) errors.push(`Item ${index + 1}: Color is required`);
         if (item.price === undefined || item.price < 0) errors.push(`Item ${index + 1}: Price must be a positive number`);
+        
+        // Kiểm tra mediaIds nếu có
+        if (item.mediaIds !== undefined) {
+          if (!Array.isArray(item.mediaIds)) {
+            errors.push(`Item ${index + 1}: MediaIds must be an array`);
+          } else {
+            item.mediaIds.forEach((mediaId: any, idx: number) => {
+              if (!Number.isInteger(mediaId) || mediaId <= 0) {
+                errors.push(`Item ${index + 1}: MediaIds[${idx}] must be a positive integer (media ID)`);
+              }
+            });
+          }
+        }
       });
     }
   } else {
@@ -54,24 +94,6 @@ const validateProductData = (data: any) => {
   }
   
   logger.debug('Product validation successful');
-};
-
-export type CreateProductBody = {
-  name: string;
-  description?: string;
-  shortDescription?: string;
-  categoryId: number;
-  slug: string;
-  metaTitle?: string;
-  metaDescription?: string;
-  metaKeywords?: string;
-  avatarUrl?: string;
-  items?: any[];
-  media?: { 
-    type: 'image' | 'video'; 
-    url: string;
-    altText?: string;
-  }[];
 };
 
 const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) => {
@@ -107,9 +129,6 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
     throw new AppError(400, 'Category not found', 'CATEGORY_NOT_FOUND');
   }
   logger.debug('Category found', { categoryId, categoryName: category.name });
-
-  // Set timezone for timestamps
-  const timestamp = moment().tz('Asia/Ho_Chi_Minh').toDate();
 
   try {
     logger.debug('Attempting to create product', { 
@@ -148,48 +167,83 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       slug: newProduct.slug
     });
 
-    // Add product items if provided
-    if (items && items.length > 0) {
-      logger.debug('Processing product items', { 
-        productId: newProduct.id,
-        itemCount: items.length 
-      });
-
-      const itemPromises = items.map((item: any) => {
-        return ProductItem.create({
-          ...item,
-          status: mapStatusValue(item.status),
-          productId: newProduct.id
-        });
-      });
-
-      await Promise.all(itemPromises);
-      logger.debug('Items added successfully', {
-        productId: newProduct.id,
-        itemCount: items.length
-      });
-    }
-
-    // Add media if provided
+    // Tạo media TRƯỚC và lưu ID
+    let createdMedia: any[] = [];
     if (media && media.length > 0) {
       logger.debug('Processing product media', { 
         productId: newProduct.id,
         mediaCount: media.length 
       });
 
-      const mediaPromises = media.map((mediaItem: { type: 'image' | 'video'; url: string; altText?: string }) => {
-        return ProductMedia.create({
+      for (let i = 0; i < media.length; i++) {
+        const mediaItem = media[i];
+        const createdMediaItem = await ProductMedia.create({
           productId: newProduct.id,
           type: mediaItem.type,
           url: mediaItem.url,
           altText: mediaItem.altText
         });
-      });
+        createdMedia.push(createdMediaItem);
+        logger.debug(`Media created at index ${i}`, { 
+          mediaId: createdMediaItem.id,
+          url: mediaItem.url,
+          type: mediaItem.type
+        });
+      }
 
-      await Promise.all(mediaPromises);
       logger.debug('Media files added successfully', {
         productId: newProduct.id,
-        mediaCount: media.length
+        mediaCount: media.length,
+        mediaIds: createdMedia.map(m => m.id)
+      });
+    }
+
+    // Tạo items SAU KHI đã có media
+    if (items && items.length > 0) {
+      logger.debug('Processing product items with mediaIds (as mediaIndex)', { 
+        productId: newProduct.id,
+        itemCount: items.length,
+        availableMediaCount: createdMedia.length,
+        availableMediaIds: createdMedia.map(m => m.id)
+      });
+
+      for (const itemData of items) {
+        const itemFields: any = {
+          productId: newProduct.id,
+          name: itemData.name,
+          color: itemData.color,
+          price: itemData.price,
+          originalPrice: itemData.originalPrice,
+          status: mapStatusValue(itemData.status || 'available'), // Mặc định là 'available'
+        };
+
+        // Xử lý mediaIndex (không xử lý mediaIds)
+        if (itemData.mediaIndex !== undefined) {
+          if (Array.isArray(itemData.mediaIndex) && itemData.mediaIndex.length > 0) {
+            // Lấy tất cả media của product này
+            const allProductMedia = await ProductMedia.findAll({
+              where: { productId: newProduct.id },
+              order: [['id', 'ASC']]
+            });
+            
+            const validMediaIds = [];
+            for (const mediaIndex of itemData.mediaIndex) {
+              if (mediaIndex >= 0 && mediaIndex < allProductMedia.length) {
+                validMediaIds.push(allProductMedia[mediaIndex].id);
+              }
+            }
+            
+            // Lưu vào database cột mediaIds
+            itemFields.mediaIds = validMediaIds.length > 0 ? JSON.stringify(validMediaIds) : null;
+          }
+        }
+
+        await ProductItem.create(itemFields);
+      }
+      
+      logger.debug('Items added successfully with media links', {
+        productId: newProduct.id,
+        itemCount: items.length
       });
     }
 
@@ -198,7 +252,8 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       include: [
         {
           model: ProductItem,
-          as: 'items'
+          as: 'items',
+          attributes: ['id', 'name', 'color', 'price', 'originalPrice', 'status', 'mediaIds'] // Thay mediaId bằng mediaIds
         },
         {
           model: ProductMedia,
@@ -214,21 +269,6 @@ const handler = asyncHandler(async (req: NextApiRequest, res: NextApiResponse) =
       itemCount: items?.length || 0,
       mediaCount: media?.length || 0
     });
-
-    // Kiểm tra và chuyển đổi trạng thái biến thể
-    for (const item of items || []) {
-      // Chuyển đổi trạng thái từ "active" thành "available" nếu cần
-      if (item.status === 'active') {
-        item.status = ProductItemStatus.AVAILABLE;
-      }
-
-      // Kiểm tra trạng thái hợp lệ
-      if (!Object.values(ProductItemStatus).includes(item.status)) {
-        return res.status(400).json({
-          message: `Trạng thái sản phẩm không hợp lệ: ${item.status}. Các trạng thái hợp lệ: ${Object.values(ProductItemStatus).join(', ')}`
-        });
-      }
-    }
 
     res.status(201).json({ 
       success: true,
