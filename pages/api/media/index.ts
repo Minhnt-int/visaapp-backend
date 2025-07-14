@@ -8,12 +8,12 @@ import formidable from 'formidable';
 import fs from 'fs';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { Op, QueryTypes } from 'sequelize';
+import { Op } from 'sequelize';
 
 export const config = {
   api: {
-    bodyParser: false, // Disable body parsing, we'll use formidable
-    sizeLimit: '25mb', // Tăng giới hạn kích thước request cho route này
+    bodyParser: false,
+    sizeLimit: '50mb',
   },
 };
 
@@ -26,29 +26,16 @@ if (!fs.existsSync(uploadDir)) {
 
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
   const requestId = req.headers['x-request-id'] || Date.now().toString();
-  logger.info('Processing media request', {
-    requestId,
-    method: req.method,
-    url: req.url,
-    userAgent: req.headers['user-agent']
-  });
-
+  
   await connectToDatabase();
 
-  // Xử lý GET request - Lấy danh sách ảnh
+  // GET - Lấy danh sách media
   if (req.method === 'GET') {
     try {
       const { page = '1', limit = '20', search, type } = req.query;
       const currentPage = parseInt(page as string, 10);
       const itemsPerPage = parseInt(limit as string, 10);
       const offset = (currentPage - 1) * itemsPerPage;
-
-      const where: any = {};
-      if (search) {
-        where.name = {
-          [Op.like]: `%${search}%`
-        };
-      }
 
       // Build WHERE clause conditions
       let whereClause = '';
@@ -69,7 +56,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         whereClause = `WHERE ${conditions.join(' AND ')}`;
       }
 
-      // Use raw query to ensure consistent field names
+      // Query media list
       const results = await sequelize.query(
         `SELECT id, name, 
          CONCAT('/api/media/serve/', SUBSTRING_INDEX(url, '/', -1)) as url, 
@@ -122,46 +109,64 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     } catch (error) {
       logger.error('Error retrieving media list', {
         requestId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined
+        error: error instanceof Error ? error.message : 'Unknown error'
       });
       throw error;
     }
   }
-  // Xử lý POST request - Upload ảnh mới
+  
+  // POST - Upload media
   else if (req.method === 'POST') {
     try {
-      // Kiểm tra kết nối database trước khi xử lý upload
-      try {
-        await sequelize.authenticate();
-        logger.info('Database connection verified before upload', { requestId });
-      } catch (dbError) {
-        logger.error('Database connection failed before upload', {
-          requestId,
-          error: dbError instanceof Error ? dbError.message : 'Unknown error'
-        });
-        return res.status(500).json({
-          success: false,
-          message: 'Database connection error, cannot upload media'
-        });
+      // Validate content type
+      if (!req.headers['content-type']?.includes('multipart/form-data')) {
+        throw new AppError(400, 'Content-Type must be multipart/form-data', 'INVALID_CONTENT_TYPE');
       }
 
+      // Configure formidable
       const form = formidable({
         uploadDir,
         keepExtensions: true,
-        maxFileSize: 5 * 1024 * 1024, // 5MB
-        filter: ({ mimetype }) => {
-          return mimetype ? mimetype.startsWith('image/') : false;
-        },
+        maxFileSize: 50 * 1024 * 1024, // 50MB
+        filter: ({ originalFilename, mimetype }) => {
+          // Accept images and videos
+          if (mimetype && (mimetype.startsWith('image/') || mimetype.startsWith('video/'))) {
+            return true;
+          }
+          
+          // Fallback: check file extension
+          if (originalFilename) {
+            const ext = path.extname(originalFilename).toLowerCase();
+            const allowedExts = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.mp4', '.mov', '.avi', '.mkv', '.webm'];
+            return allowedExts.includes(ext);
+          }
+          
+          return false;
+        }
       });
 
+      // Parse form data
       const [fields, files] = await form.parse(req);
-      const uploadedFiles = files.file || [];
+      
+      const uploadedFiles = Array.isArray(files.file) ? files.file : (files.file ? [files.file] : []);
 
-      if (!Array.isArray(uploadedFiles) || uploadedFiles.length === 0) {
-        return res.status(400).json({ error: 'No files uploaded' });
+      if (uploadedFiles.length === 0) {
+        return res.status(400).json({ 
+          success: false,
+          error: 'No files uploaded',
+          details: 'Please select at least one file to upload'
+        });
       }
 
+      // Validate file sizes
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      for (const file of uploadedFiles) {
+        if (file.size > maxSize) {
+          throw new AppError(400, `File ${file.originalFilename} is too large. Maximum size is 50MB`, 'FILE_TOO_LARGE');
+        }
+      }
+
+      // Process uploaded files
       const uploadedMedia = [];
       for (const file of uploadedFiles) {
         try {
@@ -173,31 +178,34 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
           // Move file from temp location to final location
           fs.renameSync(file.filepath, finalPath);
 
-          // Get alt_text from form if exists
-          let altTextValue = '';
-          if (fields.altText) {
-            altTextValue = Array.isArray(fields.altText) ? fields.altText[0] : fields.altText;
+          // Get alt text from form
+          const altTextValue = fields.altText ? 
+            (Array.isArray(fields.altText) ? fields.altText[0] : fields.altText) : '';
+
+          // Detect file type
+          let fileType = 'image'; // default
+          if (file.mimetype?.startsWith('video/')) {
+            fileType = 'video';
           }
 
           // Create media record
           const mediaRecord = await Media.create({
             name: originalFilename,
             url: `/api/media/serve/${fileName}`,
-            type: 'image',
+            type: fileType,
             altText: altTextValue
           });
 
           uploadedMedia.push(mediaRecord);
-          logger.info('Media record created', { 
-            id: mediaRecord.id,
-            filename: fileName 
-          });
+          
         } catch (error) {
           logger.error('Error processing uploaded file', {
+            requestId,
             error: error instanceof Error ? error.message : 'Unknown error',
             filename: file.originalFilename
           });
-          // Delete the file if database insert fails
+          
+          // Clean up failed file
           if (file.filepath && fs.existsSync(file.filepath)) {
             fs.unlinkSync(file.filepath);
           }
@@ -205,26 +213,44 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         }
       }
 
-      logger.info('Files uploaded successfully', { count: uploadedMedia.length });
+      logger.info('Files uploaded successfully', { 
+        requestId,
+        count: uploadedMedia.length,
+        totalSize: uploadedFiles.reduce((sum, file) => sum + file.size, 0)
+      });
 
-      res.status(200).json({
+      return res.status(200).json({
         success: true,
         data: uploadedMedia
       });
+      
     } catch (error) {
-      logger.error('Error uploading files', {
+      logger.error('Media upload error', {
+        requestId,
         error: error instanceof Error ? error.message : 'Unknown error'
       });
-      throw error;
+      
+      if (error instanceof AppError) {
+        return res.status(error.statusCode).json({
+          success: false,
+          error: error.message,
+          code: error.code
+        });
+      }
+      
+      return res.status(500).json({
+        success: false,
+        error: 'Internal server error during upload'
+      });
     }
   }
-  // Xử lý DELETE request - Xóa media
+  
+  // Method not allowed
   else {
-    logger.warn('Invalid method for media endpoint', {
-      requestId,
-      method: req.method
+    res.setHeader('Allow', ['GET', 'POST']);
+    return res.status(405).json({
+      success: false,
+      error: `Method ${req.method} Not Allowed`
     });
-    res.setHeader('Allow', ['GET', 'POST', 'DELETE']);
-    return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
-}); 
+});

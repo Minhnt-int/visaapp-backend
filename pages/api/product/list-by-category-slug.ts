@@ -17,12 +17,12 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   const offset = (currentPage - 1) * itemsPerPage;
 
   try {
-    let allCategoryIds: any[] = [];
+    let allCategoryIds: number[] = [];
     let categoryInfo = null;
 
-    // Nếu có slug, lấy sản phẩm theo danh mục cụ thể
+    // STEP 1: Get category and subcategories (nếu có slug)
     if (slug && typeof slug === 'string') {
-      // Get category by slug
+      // Get main category
       const [categoriesResult] = await sequelize.query(
         'SELECT * FROM product_categories WHERE slug = ?',
         { replacements: [slug] }
@@ -42,88 +42,155 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       );
 
       const subcategories = Array.isArray(subcategoriesResult) ? subcategoriesResult : [];
-
-      // Create list of all category IDs (including main category and subcategories)
       allCategoryIds = [category.id, ...subcategories.map((sub: any) => sub.id)];
     }
 
-    // Tạo câu truy vấn SQL dựa vào việc có slug hay không
+    // STEP 2: Build queries với category filter
     let countQuery = 'SELECT COUNT(*) as count FROM products WHERE status = ?';
     let productsQuery = `
       SELECT p.*, c.name as categoryName, c.slug as categorySlug 
       FROM products p 
       JOIN product_categories c ON p.categoryId = c.id
       WHERE p.status = ?`;
-    
+
     let countReplacements: any[] = [ProductStatus.ACTIVE];
     let productsReplacements: any[] = [ProductStatus.ACTIVE];
 
-    // Nếu có danh mục cụ thể, thêm điều kiện vào truy vấn
     if (allCategoryIds.length > 0) {
-      countQuery += ' AND categoryId IN (?)';
-      productsQuery += ` AND p.categoryId IN (${allCategoryIds.join(',')})`;
-      countReplacements.push(allCategoryIds);
+      const placeholders = allCategoryIds.map(() => '?').join(',');
+      countQuery += ` AND categoryId IN (${placeholders})`;
+      productsQuery += ` AND p.categoryId IN (${placeholders})`;
+      countReplacements.push(...allCategoryIds);
+      productsReplacements.push(...allCategoryIds);
     }
 
-    // Hoàn thành câu truy vấn với phân trang
     productsQuery += ' ORDER BY p.createdAt DESC LIMIT ? OFFSET ?';
     productsReplacements.push(itemsPerPage, offset);
 
-    // Thực hiện truy vấn đếm số lượng
-    const [countResult] = await sequelize.query(
-      countQuery,
-      { replacements: countReplacements }
-    );
-    
+    // STEP 3: Execute count và products queries
+    const [countResult] = await sequelize.query(countQuery, { replacements: countReplacements });
     const count = (countResult as any[])[0].count;
     const totalPages = Math.ceil(count / itemsPerPage);
 
-    // Thực hiện truy vấn lấy sản phẩm
-    const [productsResult] = await sequelize.query(
-      productsQuery,
-      { replacements: productsReplacements }
-    );
-
+    const [productsResult] = await sequelize.query(productsQuery, { replacements: productsReplacements });
     const products = Array.isArray(productsResult) ? productsResult : [];
 
-    // Get product items and media
-    for (const product of products as any[]) {
-      // Get product items
-      const [itemsResult] = await sequelize.query(
-        'SELECT * FROM product_items WHERE productId = ?',
-        { replacements: [product.id] }
-      );
-      product.items = Array.isArray(itemsResult) ? itemsResult : [];
-      
-      // Get product media
-      const [mediaResult] = await sequelize.query(
-        'SELECT * FROM product_media WHERE productId = ? LIMIT 5',
-        { replacements: [product.id] }
-      );
-      product.media = Array.isArray(mediaResult) ? mediaResult : [];
-
-      // Get product items with media
-      const productIds = [product.id]; // Assuming product.id is the identifier for the product
-      const [productItemsResult] = await sequelize.query(
-        `
-        SELECT 
-          pi.*,
-          pm.url as mediaUrl,
-          pm.type as mediaType,
-          pm.altText as mediaAltText
-        FROM product_items pi
-        LEFT JOIN product_media pm ON pi.mediaId = pm.id
-        WHERE pi.productId IN (${productIds.join(',')})
-        `,
-        { replacements: productIds }
-      );
-      product.items = Array.isArray(productItemsResult) ? productItemsResult : [];
+    if (products.length === 0) {
+      return res.status(200).json({
+        message: 'No products found',
+        data: {
+          products: [],
+          category: categoryInfo,
+          pagination: {
+            total: Number(count),
+            totalPages,
+            currentPage,
+            itemsPerPage
+          }
+        }
+      });
     }
+
+    // STEP 4: Batch queries cho items và media
+    const productIds = products.map((product: any) => product.id);
+    const productIdPlaceholders = productIds.map(() => '?').join(',');
+
+    // Single query cho tất cả product items
+    const [productItemsResult] = await sequelize.query(
+      `SELECT * FROM product_items WHERE productId IN (${productIdPlaceholders})`,
+      { replacements: productIds }
+    );
+
+    // Single query cho tất cả product media
+    const [productMediaResult] = await sequelize.query(
+      `SELECT * FROM product_media WHERE productId IN (${productIdPlaceholders})`,
+      { replacements: productIds }
+    );
+
+    // STEP 5: Create maps để group data
+    const productItemsMap = new Map<number, any[]>();
+    const productMediaMap = new Map<number, any[]>();
+
+    // Group items by productId
+    (productItemsResult as any[]).forEach((item: any) => {
+      if (!productItemsMap.has(item.productId)) {
+        productItemsMap.set(item.productId, []);
+      }
+
+      // Parse mediaIds JSON
+      let mediaIds: number[] = [];
+      if (item.mediaIds) {
+        try {
+          mediaIds = JSON.parse(item.mediaIds);
+        } catch (error) {
+          logger.error('Error parsing mediaIds for item', { 
+            itemId: item.id, 
+            mediaIds: item.mediaIds 
+          });
+        }
+      }
+
+      productItemsMap.get(item.productId)!.push({
+        ...item,
+        mediaIds
+      });
+    });
+
+    // Group media by productId
+    (productMediaResult as any[]).forEach((media: any) => {
+      if (!productMediaMap.has(media.productId)) {
+        productMediaMap.set(media.productId, []);
+      }
+      productMediaMap.get(media.productId)!.push(media);
+    });
+
+    // STEP 6: Assign items và media vào products
+    const productsWithDetails = (products as any[]).map((product: any) => {
+      const productItems = productItemsMap.get(product.id) || [];
+      const productMedia = productMediaMap.get(product.id) || [];
+
+      // Assign media to items based on mediaIds
+      const itemsWithMedia = productItems.map((item: any) => {
+        const itemMedia: any[] = [];
+        
+        if (item.mediaIds && Array.isArray(item.mediaIds)) {
+          item.mediaIds.forEach((mediaId: number) => {
+            const media = productMedia.find((m: any) => m.id === mediaId);
+            if (media) {
+              itemMedia.push({
+                id: media.id,
+                url: media.url,
+                type: media.type,
+                altText: media.altText
+              });
+            }
+          });
+        }
+
+        return {
+          ...item,
+          media: itemMedia
+        };
+      });
+
+      return {
+        ...product,
+        items: itemsWithMedia,
+        media: productMedia.slice(0, 5) // Giới hạn 5 media per product
+      };
+    });
+
+    logger.info('Products retrieved successfully', {
+      categorySlug: slug,
+      productsCount: products.length,
+      totalCount: count,
+      page: currentPage
+    });
 
     return res.status(200).json({
       message: 'Products retrieved successfully',
       data: {
-        products,
+        products: productsWithDetails,
         category: categoryInfo,
         pagination: {
           total: Number(count),
@@ -133,8 +200,12 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
         }
       }
     });
+
   } catch (error) {
-    logger.error('Error retrieving products:', error);
+    logger.error('Error retrieving products by category', { 
+      slug, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    });
     throw new AppError(500, 'Internal server error', 'SERVER_ERROR');
   }
 });
