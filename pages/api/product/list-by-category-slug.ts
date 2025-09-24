@@ -11,7 +11,17 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
   }
 
   await connectToDatabase();
-  const { slug, page = '1', limit = '10' } = req.query;
+  const { 
+    slug, 
+    page = '1', 
+    limit = '10',
+    search,
+    sortBy = 'createdAt',
+    sortOrder = 'DESC',
+    minPrice,
+    maxPrice
+  } = req.query;
+  
   const currentPage = parseInt(page as string, 10) || 1;
   const itemsPerPage = parseInt(limit as string, 10) || 10;
   const offset = (currentPage - 1) * itemsPerPage;
@@ -46,7 +56,7 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     }
 
     // STEP 2: Build queries với category filter
-    let countQuery = 'SELECT COUNT(*) as count FROM products WHERE status = ?';
+    let countQuery = 'SELECT COUNT(*) as count FROM products p JOIN product_categories c ON p.categoryId = c.id WHERE p.status = ?';
     let productsQuery = `
       SELECT p.*, c.name as categoryName, c.slug as categorySlug 
       FROM products p 
@@ -56,19 +66,154 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     let countReplacements: any[] = [ProductStatus.ACTIVE];
     let productsReplacements: any[] = [ProductStatus.ACTIVE];
 
+    // Add category filter if slug provided
     if (allCategoryIds.length > 0) {
       const placeholders = allCategoryIds.map(() => '?').join(',');
-      countQuery += ` AND categoryId IN (${placeholders})`;
+      countQuery += ` AND p.categoryId IN (${placeholders})`;
       productsQuery += ` AND p.categoryId IN (${placeholders})`;
       countReplacements.push(...allCategoryIds);
       productsReplacements.push(...allCategoryIds);
     }
 
-    productsQuery += ' ORDER BY p.createdAt DESC LIMIT ? OFFSET ?';
-    productsReplacements.push(itemsPerPage, offset);
+    // Add search functionality
+    if (search && typeof search === 'string' && search.trim()) {
+      const searchTerm = `%${search.trim()}%`;
+      const searchCondition = ` AND (p.name LIKE ? OR p.description LIKE ? OR p.shortDescription LIKE ? OR c.name LIKE ?)`;
+      
+      countQuery += searchCondition;
+      productsQuery += searchCondition;
+      
+      // Add search parameters for all queries
+      const searchParams = [searchTerm, searchTerm, searchTerm, searchTerm];
+      countReplacements.push(...searchParams);
+      productsReplacements.push(...searchParams);
+    }
+
+    // Add price filter functionality
+    if (minPrice || maxPrice) {
+      let priceCondition = ` AND p.id IN (
+        SELECT DISTINCT pi.productId 
+        FROM product_items pi 
+        WHERE `;
+      
+      const priceConditions = [];
+      if (minPrice) {
+        priceConditions.push('pi.price >= ?');
+        countReplacements.push(parseFloat(minPrice as string));
+        productsReplacements.push(parseFloat(minPrice as string));
+      }
+      if (maxPrice) {
+        priceConditions.push('pi.price <= ?');
+        countReplacements.push(parseFloat(maxPrice as string));
+        productsReplacements.push(parseFloat(maxPrice as string));
+      }
+      
+      priceCondition += priceConditions.join(' AND ') + ')';
+      countQuery += priceCondition;
+      productsQuery += priceCondition;
+    }
+
+    // Add sorting
+    const validSortFields = ['id', 'name', 'title', 'createdAt', 'updatedAt', 'categoryName', 'price'];
+    const sanitizedSortBy = validSortFields.includes(sortBy as string) ? sortBy as string : 'createdAt';
+    const sanitizedSortOrder = (sortOrder as string).toUpperCase() === 'ASC' ? 'ASC' : 'DESC';
+    
+    // Handle price sorting - need to join with product_items and get min price
+    if (sanitizedSortBy === 'price') {
+      // Modify the products query to include price sorting
+      productsQuery = `
+        SELECT p.*, c.name as categoryName, c.slug as categorySlug, MIN(pi.price) as minPrice
+        FROM products p 
+        JOIN product_categories c ON p.categoryId = c.id
+        LEFT JOIN product_items pi ON p.id = pi.productId
+        WHERE p.status = ?`;
+      
+      // Re-add all the conditions with GROUP BY for price aggregation
+      let tempReplacements: any[] = [ProductStatus.ACTIVE];
+      
+      if (allCategoryIds.length > 0) {
+        const placeholders = allCategoryIds.map(() => '?').join(',');
+        productsQuery += ` AND p.categoryId IN (${placeholders})`;
+        tempReplacements.push(...allCategoryIds);
+      }
+      
+      if (search && typeof search === 'string' && search.trim()) {
+        const searchTerm = `%${search.trim()}%`;
+        productsQuery += ` AND (p.name LIKE ? OR p.description LIKE ? OR p.shortDescription LIKE ? OR c.name LIKE ?)`;
+        tempReplacements.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      }
+      
+      if (minPrice || maxPrice) {
+        const priceConditions = [];
+        if (minPrice) {
+          priceConditions.push('pi.price >= ?');
+          tempReplacements.push(parseFloat(minPrice as string));
+        }
+        if (maxPrice) {
+          priceConditions.push('pi.price <= ?');
+          tempReplacements.push(parseFloat(maxPrice as string));
+        }
+        productsQuery += ` AND (${priceConditions.join(' AND ')})`;
+      }
+      
+      productsQuery += ` GROUP BY p.id, c.id ORDER BY minPrice ${sanitizedSortOrder} LIMIT ? OFFSET ?`;
+      productsReplacements = [...tempReplacements, itemsPerPage, offset];
+      
+    } else {
+      // Normal sorting for non-price fields
+      let orderByColumn = sanitizedSortBy;
+      if (sanitizedSortBy === 'categoryName') {
+        orderByColumn = 'c.name';
+      } else {
+        orderByColumn = `p.${sanitizedSortBy}`;
+      }
+      
+      productsQuery += ` ORDER BY ${orderByColumn} ${sanitizedSortOrder} LIMIT ? OFFSET ?`;
+      productsReplacements.push(itemsPerPage, offset);
+
+    }
 
     // STEP 3: Execute count và products queries
-    const [countResult] = await sequelize.query(countQuery, { replacements: countReplacements });
+    // For price sorting, we need a different count query since we're using GROUP BY
+    let finalCountQuery = countQuery;
+    let finalCountReplacements = countReplacements;
+    
+    if (sanitizedSortBy === 'price') {
+      // Count distinct products when using price sorting (because of GROUP BY)
+      finalCountQuery = `SELECT COUNT(DISTINCT p.id) as count FROM products p 
+        JOIN product_categories c ON p.categoryId = c.id
+        LEFT JOIN product_items pi ON p.id = pi.productId
+        WHERE p.status = ?`;
+      
+      finalCountReplacements = [ProductStatus.ACTIVE];
+      
+      if (allCategoryIds.length > 0) {
+        const placeholders = allCategoryIds.map(() => '?').join(',');
+        finalCountQuery += ` AND p.categoryId IN (${placeholders})`;
+        finalCountReplacements.push(...allCategoryIds);
+      }
+      
+      if (search && typeof search === 'string' && search.trim()) {
+        const searchTerm = `%${search.trim()}%`;
+        finalCountQuery += ` AND (p.name LIKE ? OR p.description LIKE ? OR p.shortDescription LIKE ? OR c.name LIKE ?)`;
+        finalCountReplacements.push(searchTerm, searchTerm, searchTerm, searchTerm);
+      }
+      
+      if (minPrice || maxPrice) {
+        const priceConditions = [];
+        if (minPrice) {
+          priceConditions.push('pi.price >= ?');
+          finalCountReplacements.push(parseFloat(minPrice as string));
+        }
+        if (maxPrice) {
+          priceConditions.push('pi.price <= ?');
+          finalCountReplacements.push(parseFloat(maxPrice as string));
+        }
+        finalCountQuery += ` AND (${priceConditions.join(' AND ')})`;
+      }
+    }
+    
+    const [countResult] = await sequelize.query(finalCountQuery, { replacements: finalCountReplacements });
     const count = (countResult as any[])[0].count;
     const totalPages = Math.ceil(count / itemsPerPage);
 
@@ -184,7 +329,14 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
       categorySlug: slug,
       productsCount: products.length,
       totalCount: count,
-      page: currentPage
+      page: currentPage,
+      search: search || null,
+      sortBy: sanitizedSortBy,
+      sortOrder: sanitizedSortOrder,
+      filters: {
+        minPrice: minPrice || null,
+        maxPrice: maxPrice || null
+      }
     });
 
     return res.status(200).json({

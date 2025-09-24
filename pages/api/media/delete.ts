@@ -7,8 +7,97 @@ import { QueryTypes } from 'sequelize';
 import fs from 'fs';
 import path from 'path';
 
+/**
+ * Helper function để xóa file media từ hệ thống file
+ */
+async function deleteMediaFile(mediaUrl: string, requestId: string, mediaId: number): Promise<void> {
+  if (!mediaUrl || typeof mediaUrl !== 'string' || mediaUrl.trim() === '') {
+    logger.warn('No valid media URL provided for file deletion', { requestId, mediaId });
+    return;
+  }
+
+  try {
+    let filename: string;
+    
+    // Xử lý các dạng URL khác nhau
+    if (mediaUrl.startsWith('http://') || mediaUrl.startsWith('https://')) {
+      // URL đầy đủ - lấy phần filename từ path
+      const urlObj = new URL(mediaUrl);
+      filename = path.basename(urlObj.pathname);
+    } else if (mediaUrl.startsWith('/uploads/')) {
+      // Relative path từ public - lấy filename
+      filename = path.basename(mediaUrl);
+    } else if (mediaUrl.includes('/')) {
+      // Path với directory segments
+      const parts = mediaUrl.split('/');
+      filename = parts[parts.length - 1];
+    } else {
+      // Direct filename
+      filename = mediaUrl;
+    }
+    
+    // Validate filename
+    if (!filename || filename === '.' || filename === '..') {
+      logger.warn('Invalid filename extracted from URL', { requestId, mediaId, mediaUrl, filename });
+      return;
+    }
+    
+    // Tạo đường dẫn đến file
+    const uploadsDir = path.join(process.cwd(), 'uploads');
+    const publicUploadsDir = path.join(process.cwd(), 'public', 'uploads');
+    
+    // Kiểm tra cả 2 thư mục uploads và public/uploads
+    const possiblePaths = [
+      path.join(uploadsDir, filename),
+      path.join(publicUploadsDir, filename)
+    ];
+    
+    let fileDeleted = false;
+    
+    for (const filePath of possiblePaths) {
+      if (fs.existsSync(filePath)) {
+        try {
+          // Kiểm tra quyền trước khi xóa
+          fs.accessSync(filePath, fs.constants.F_OK | fs.constants.W_OK);
+          fs.unlinkSync(filePath);
+          logger.info(`Successfully deleted file: ${filePath}`, { requestId, mediaId });
+          fileDeleted = true;
+          break;
+        } catch (accessError) {
+          logger.error(`No permission to delete file: ${filePath}`, {
+            requestId,
+            mediaId,
+            error: accessError instanceof Error ? accessError.message : 'Unknown error'
+          });
+        }
+      }
+    }
+    
+    if (!fileDeleted) {
+      logger.warn('File not found in any expected location', { 
+        requestId, 
+        mediaId, 
+        mediaUrl, 
+        filename,
+        searchedPaths: possiblePaths 
+      });
+    }
+    
+  } catch (fileError) {
+    // Log lỗi nhưng không throw để không ảnh hưởng đến việc xóa DB
+    logger.error(`Error deleting file for media ${mediaId}`, {
+      requestId,
+      mediaId,
+      url: mediaUrl,
+      error: fileError instanceof Error ? fileError.message : 'Unknown error'
+    });
+  }
+}
+
 export default asyncHandler(async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const requestId = req.headers['x-request-id'] || Date.now().toString();
+  const requestId = Array.isArray(req.headers['x-request-id']) 
+    ? req.headers['x-request-id'][0] 
+    : req.headers['x-request-id'] || Date.now().toString();
   logger.info('Processing media delete request', {
     requestId,
     method: req.method,
@@ -82,45 +171,8 @@ export default asyncHandler(async function handler(req: NextApiRequest, res: Nex
     });
     
     // Xóa file sau khi đã xóa bản ghi thành công
-    if (mediaUrl && typeof mediaUrl === 'string' && mediaUrl.trim() !== '') {
-      try {
-        // Xử lý đường dẫn và lấy tên file
-        let filename;
-        
-        // Check if the path contains directory segments
-        if (mediaUrl.includes('/')) {
-          // Handle path with directory segments
-          const parts = mediaUrl.split('/');
-          filename = parts[parts.length - 1];
-        } else {
-          // Treat path as filename directly
-          filename = mediaUrl;
-        }
-        
-        if (filename) {
-          // Đường dẫn đầy đủ đến file
-          const uploadsDir = path.join(process.cwd(), 'public', 'uploads');
-          const filePath = path.join(uploadsDir, filename);
-          
-          logger.info(`Attempting to delete file: ${filePath}`, { requestId, mediaId });
-          
-          // Kiểm tra file có tồn tại không trước khi xóa
-          if (fs.existsSync(filePath)) {
-            fs.unlinkSync(filePath);
-            logger.info(`Successfully deleted file: ${filePath}`, { requestId, mediaId });
-          } else {
-            logger.warn(`File not found on disk: ${filePath}`, { requestId, mediaId });
-          }
-        }
-      } catch (fileError) {
-        // Chỉ log lỗi, không ảnh hưởng đến kết quả API vì đã xóa DB thành công
-        logger.error(`Error deleting file for media ${mediaId}`, {
-          requestId,
-          mediaId,
-          url: mediaUrl,
-          error: fileError instanceof Error ? fileError.message : 'Unknown error'
-        });
-      }
+    if (mediaUrl) {
+      await deleteMediaFile(String(mediaUrl), requestId, mediaId);
     }
     
     return res.status(200).json({
