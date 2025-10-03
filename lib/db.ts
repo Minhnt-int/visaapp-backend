@@ -1,38 +1,51 @@
-// filepath: /Users/duy/nextjs project/web-qua-tang/lib/db.ts
-import { Sequelize } from 'sequelize';
+// backend/visaapp/lib/db.ts
 
-// Định nghĩa enum ProductItemStatus
-const ProductItemStatus = {
-  AVAILABLE: 'available',
-  OUT_OF_STOCK: 'out_of_stock',
-  DISCONTINUED: 'discontinued'
-};
+import mysql from 'mysql2/promise';
 
-// Cấu hình kết nối database
-const sequelize = new Sequelize({
-  dialect: 'mysql',
-  host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '3306'),
-  username: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  database: process.env.DB_DATABASE,
-  logging: console.log,
-  timezone: process.env.DB_TIMEZONE || "+07:00"
-});
+/**
+ * =================================================================================
+ * QUẢN LÝ KẾT NỐI DATABASE (DATABASE CONNECTION POOL)
+ * =================================================================================
+ *
+ * Tại sao lại cần file này?
+ * Trong một ứng dụng web, việc tạo một kết nối mới đến database cho mỗi yêu cầu (request)
+ * là cực kỳ chậm và tốn tài nguyên. Một "Connection Pool" (bể kết nối) sẽ giải quyết
+ * vấn đề này bằng cách tạo ra và duy trì một số lượng kết nối đã sẵn sàng.
+ *
+ * Khi có một yêu cầu cần truy vấn database:
+ * 1. Nó sẽ "mượn" một kết nối từ bể.
+ * 2. Thực hiện truy vấn.
+ * 3. "Trả" kết nối đó lại vào bể để các yêu cầu khác có thể tái sử dụng.
+ *
+ * Lợi ích:
+ * - Tăng hiệu suất: Giảm độ trễ vì không phải mở/đóng kết nối liên tục.
+ * - Tăng độ ổn định: Quản lý và giới hạn số lượng kết nối đồng thời, tránh làm sập database.
+ *
+ * Chú ý:
+ * - Biến `pool` được khai báo trong scope global nhưng chỉ được khởi tạo một lần.
+ *   Trong môi trường serverless của Next.js, điều này giúp tái sử dụng pool giữa các
+ *   lần gọi API khác nhau mà không cần khởi tạo lại.
+ */
 
-export const connectToDatabase = async () => {
-  try {
-    await sequelize.authenticate();
-    console.log('Kết nối database thành công!');
+declare global {
+  // Khai báo một biến global để lưu trữ connection pool.
+  // Điều này cho phép chúng ta tái sử dụng pool trong môi trường hot-reload của development.
+  var pool: mysql.Pool | undefined;
+}
 
-    // Import models từ file index
-    require('../model');
+let pool: mysql.Pool;
 
-    console.log('Đã thiết lập các quan hệ giữa các models!');
-  } catch (error) {
-    console.error('Lỗi kết nối database:', error);
-    throw error;
+if (process.env.NODE_ENV === 'production') {
+  // Trong môi trường production, khởi tạo pool một lần và sử dụng.
+  pool = mysql.createPool(process.env.DATABASE_URL);
+} else {
+  // Trong môi trường development, chúng ta cần xử lý hot-reloading.
+  // Nếu không có check này, mỗi lần Next.js reload, một pool mới sẽ được tạo ra,
+  // dẫn đến cạn kiệt kết nối.
+  if (!global.pool) {
+    global.pool = mysql.createPool(process.env.DATABASE_URL);
   }
-};
+  pool = global.pool;
+}
 
-export default sequelize;
+export const db = pool;
